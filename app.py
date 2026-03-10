@@ -9,7 +9,7 @@ from services.utils import update_lista_clientes
 
 
 # Configuração inicial da página
-st.set_page_config(page_title="Gerador de Diagnóstico", layout="wide")
+st.set_page_config(page_title="DS30 | Diagnóstico & Roadmap", layout="wide")
 
 if "code" in st.query_params:
     codigo_google = st.query_params["code"]
@@ -27,8 +27,11 @@ if not creds:
     st.link_button("🔑 Fazer Login com o Google", auth_url, type="primary")
     st.stop() # Interrompe a leitura do código aqui. O formulário abaixo só aparece se logar!
 
-st.title("📊 Diagnóstico de Implementação")
-st.markdown("Preencha as informações abaixo para atualizar o banco de dados e gerar o documento de dianóstico para o cliente.")
+headerTitle, headerLogo = st.columns([6, 1], vertical_alignment="center")
+with headerTitle:
+    st.title("DS30 | Diagnóstico & Roadmap")
+with headerLogo:
+    st.image("images/logo.png", width=120)
 
 if 'lista_clientes' not in st.session_state:
     update_lista_clientes() # Carrega a lista de clientes do Google Sheets apenas uma vez e guarda na memória (Session State)

@@ -2,7 +2,7 @@ import streamlit as st
 import ast
 import json
 
-from services.utils import mostrar_imagens_existentes
+from services.utils import getKeyFromPlatform, mostrar_imagens_existentes
 
 def analisar_json_gtm(gtm_data):
     container = gtm_data.get('containerVersion', {})
@@ -141,16 +141,16 @@ def render_upd_tab(dados_formulario):
         st.subheader("Análise do Container GTM")
         uploaded_file = st.file_uploader("Upload do GTM Container Export (JSON)", type="json")
         
-        if uploaded_file is not None or st.session_state.get('k_gtm_analise'):
+        if uploaded_file is not None or st.session_state.get('k_gtm_analysis'):
             try:
                 if uploaded_file is not None:
                     gtm_data = json.load(uploaded_file)
                     st.success("Arquivo carregado com sucesso!")
                     gtm_analise_result = analisar_json_gtm(gtm_data)
-                    st.session_state["k_gtm_analise"] = gtm_analise_result
+                    st.session_state["k_gtm_analysis"] = gtm_analise_result
 
-                elif st.session_state.get('k_gtm_analise'):
-                    gtm_analise_result = ast.literal_eval(st.session_state.get('k_gtm_analise'))
+                elif st.session_state.get('k_gtm_analysis'):
+                    gtm_analise_result = ast.literal_eval(st.session_state.get('k_gtm_analysis'))
                 
                 render_gtm_analysis_table(gtm_analise_result)
                 dados_formulario['gtm_analise'] = gtm_analise_result
@@ -189,7 +189,8 @@ def render_upd_tab(dados_formulario):
     if ec_platforms:
         st.markdown("**Validação de Configuração (EC):**")
         for plat in ec_platforms:
-            status_ec = st.radio(f"A configuração EC foi feita corretamente na plataforma {plat}?", ("Sim", "Não"), key=f"k_ec_platform_{plat}", index=None)
+            plat_key = getKeyFromPlatform(plat)
+            status_ec = st.radio(f"A configuração EC foi feita corretamente na plataforma {plat}?", ("Sim", "Não"), key=f"k_ec_platform_{plat_key}", index=None)
             status_texto = f"Configurado corretamente: {status_ec}" if status_ec else "Status não informado"
             if status_ec == "Não":
                 status_need_ec_config = True
@@ -219,7 +220,8 @@ def render_upd_tab(dados_formulario):
     if ecl_platforms:
         st.markdown("**Validação de Configuração (ECL):**")
         for plat in ecl_platforms:
-            status_ecl = st.radio(f"A configuração ECL foi feita corretamente na plataforma {plat}?", ("Sim", "Não"), key=f"k_ecl_platform_{plat}", index=None)
+            plat_key = getKeyFromPlatform(plat)
+            status_ecl = st.radio(f"A configuração ECL foi feita corretamente na plataforma {plat}?", ("Sim", "Não"), key=f"k_ecl_platform_{plat_key}", index=None)
             status_texto = f"Configurado corretamente: {status_ecl}" if status_ecl else "Status não informado"
             if status_ecl == "Não":
                 status_need_ecl_config = True

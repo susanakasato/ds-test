@@ -1,5 +1,6 @@
 import os
 import io
+import re
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -10,8 +11,10 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.oxml.shared import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from googleapiclient.http import MediaIoBaseDownload
+from services.utils import get_column_index_from_diagnosis_db, Diagnosis_Headers, RANGE_PLANILHA_WIDTH
 
 # Escopos de acesso necessários (Sheets, Docs e Drive)
 SCOPES = [
@@ -92,7 +95,7 @@ def upload_image_to_drive(drive_service, file_stream, filename, folder_id=None):
     # Retorna o ID do arquivo e o link para visualização
     return file_id, file.get('webViewLink')
 
-def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_nome, folder_id_col_index=-1):
+def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_nome):
     """
     Verifica se o cliente já existe.
     Retorna a linha onde ele está, o ID da pasta, o ID do doc, e os dados completos da linha (row).
@@ -103,10 +106,12 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_n
     
     for i, row in enumerate(values):
         if len(row) > 0 and row[0].lower() == cliente_nome.lower():
-            folder_id = row[folder_id_col_index] if len(row) > abs(folder_id_col_index) else None
-            doc_id = row[folder_id_col_index - 1] if len(row) > abs(folder_id_col_index - 1) else None 
-            # ADICIONADO AQUI O RETORNO DA ROW:
-            return i + 1, folder_id, doc_id, row 
+            folder_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DRIVE_ID)]
+            diagnosis_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID)]
+            roadmap_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID)]
+            while len(row) < RANGE_PLANILHA_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
+                row.append("")
+            return i + 1, folder_id, diagnosis_doc_id, roadmap_doc_id, row 
             
     # ADICIONADO UM NONE EXTRA AQUI PARA QUANDO NÃO ACHAR NADA:
     return -1, None, None, None
@@ -180,26 +185,46 @@ def set_cell_background(cell, fill_color):
     shd.set(qn('w:fill'), fill_color)
     tcPr.append(shd)
 
-def create_update_diagnostic_doc(docs_service, drive_service, cliente_nome, dados_formulario, folder_id, doc_id):
-    """Cria/Atualiza o Google Docs estruturado usando python-docx, embutindo imagens nativamente."""
-
-    def add_images(section, raw_images):      
-        # Injeta as imagens cruas (UploadedFile do Streamlit) direto no Word!
-        if raw_images:
-            doc.add_paragraph("Evidências:")
-            for img_file in raw_images:
-                try:
-                    img_file.seek(0) # Reinicia o ponteiro de leitura da imagem
-                    image_stream = io.BytesIO(img_file.read())
-                    doc.add_picture(image_stream, width=Inches(6.0)) # 6 polegadas ajusta bem na página
-                    doc.add_paragraph()
-                except Exception as e:
-                    print(f"Aviso: Erro ao embutir imagem em {section}: {e}")
+def get_doc_content(docs_service, doc_id):
+    """
+    Recupera o conteúdo de texto de um documento do Google Docs.
     
-    # 1. Inicia o documento em memória
-    doc = Document()
+    Args:
+        doc_service: Instância do serviço da API (googleapiclient.discovery.build)
+        doc_id: O ID único do documento no Google Drive.
+        
+    Returns:
+        str: O texto completo do documento.
+    """
+    try:
+        # Faz a chamada à API para recuperar o documento completo
+        document = docs_service.documents().get(documentId=doc_id).execute()
+        
+        # O conteúdo principal fica dentro de 'body' -> 'content'
+        doc_content = document.get('body').get('content')
+        
+        texto_extraido = ""
+        
+        # Itera sobre os elementos estruturais do documento
+        for value in doc_content:
+            # Verifica se o elemento é um parágrafo
+            if 'paragraph' in value:
+                elements = value.get('paragraph').get('elements')
+                for elem in elements:
+                    # Verifica se o elemento contém texto (textRun)
+                    if 'textRun' in elem:
+                        texto_extraido += elem.get('textRun').get('content')
+            
+            # Opcional: Você pode adicionar lógica para tabelas (table) aqui se necessário
+            
+        return texto_extraido
 
-    # --- ADICIONAR HEADER ---
+    except Exception as e:
+        print(f"Ocorreu um erro ao ler o documento: {e}")
+        return None
+
+def add_doc_template(doc):
+        # --- ADICIONAR HEADER ---
     try:
         # Acede à primeira secção do documento (que controla o cabeçalho)
         section = doc.sections[0]
@@ -241,9 +266,29 @@ def create_update_diagnostic_doc(docs_service, drive_service, cliente_nome, dado
         para_right.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         run_right = para_right.add_run()
         run_right.add_picture('images/image1.png', width=Inches(2.5)) 
-        
     except Exception as e:
         print(f"Aviso: Não foi possível adicionar as imagens do rodapé: {e}")
+
+def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, folder_id, doc_id):
+    """Cria/Atualiza o Google Docs estruturado usando python-docx, embutindo imagens nativamente."""
+
+    def add_images(section, raw_images):      
+        # Injeta as imagens cruas (UploadedFile do Streamlit) direto no Word!
+        if raw_images:
+            doc.add_paragraph("Evidências:")
+            for img_file in raw_images:
+                try:
+                    img_file.seek(0) # Reinicia o ponteiro de leitura da imagem
+                    image_stream = io.BytesIO(img_file.read())
+                    doc.add_picture(image_stream, width=Inches(6.0)) # 6 polegadas ajusta bem na página
+                    doc.add_paragraph()
+                except Exception as e:
+                    print(f"Aviso: Erro ao embutir imagem em {section}: {e}")
+    
+    # 1. Inicia o documento em memória
+    doc = Document()
+
+    add_doc_template(doc)
     
     # --- INTRODUÇÃO DO DOCUMENTO ---
     doc.add_heading(f"[DS30] Diagnóstico Técnico - {cliente_nome}", level=1)
@@ -396,7 +441,7 @@ def create_update_diagnostic_doc(docs_service, drive_service, cliente_nome, dado
             platform_status = "Sim" if "Sim" in ec_platform else "Não" if "Não" in ec_platform else None
             add_subsection(platform, platform_status)
     else:
-        doc.add_paragraph("O cliente não informou se possui alguma plataforma de CRM ou automação de marketing integrada que possa ser utilizada para envio de sinais UPD para Enhanced Conversions.", style='List Bullet')
+        doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions.", style='List Bullet')
     add_images("Envio de Sinais - Enhanced Conversions", dados_formulario.get('raw_img_ec'))
     if "Não" in ", ".join(dados_formulario.get('ec_platforms', [])) and dados_formulario.get('ec_hardcoded') == 'Não':
         doc.add_heading("Considerações finais sobre o EC", level=5)
@@ -427,7 +472,7 @@ def create_update_diagnostic_doc(docs_service, drive_service, cliente_nome, dado
             platform_status = "Sim" if "Sim" in ecl_platform else "Não" if "Não" in ecl_platform else None
             add_subsection(platform, platform_status)
     else:
-        doc.add_paragraph("O cliente não informou se possui alguma plataforma de CRM ou automação de marketing integrada que possa ser utilizada para envio de sinais UPD para Enhanced Conversions for Leads.", style='List Bullet')
+        doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions for Leads.", style='List Bullet')
     add_images("Envio de Sinais - Enhanced Conversions for Leads", dados_formulario.get('raw_img_ecl'))
     if "Não" in ", ".join(dados_formulario.get('ecl_platforms', [])) and dados_formulario.get('ecl_hardcoded') == 'Não':
         doc.add_heading("Considerações finais sobre o ECL", level=5)
@@ -529,26 +574,27 @@ def create_update_diagnostic_doc(docs_service, drive_service, cliente_nome, dado
     
     return doc_id, doc_url, pdf_url
 
-def create_roadmap_doc(docs_service, drive_service, cliente_nome, folder_id, roadmap_gtg, roadmap_upd, roadmap_oci):
+def create_roadmap_doc(drive_service, client, folder_id, roadmap_data, doc_id):
     """Cria um documento Word isolado apenas com o Roadmap editado e envia para o Drive."""
     doc = Document()
-    
+    add_doc_template(doc)
     # --- CABEÇALHO (Opcional: Pode usar a mesma lógica de imagens se quiser) ---
-    doc.add_heading(f"[DS30] Plano de Ação (Roadmap) - {cliente_nome}", level=1)
-    doc.add_paragraph("Este documento apresenta o cronograma e o plano de ação sugerido com base no diagnóstico técnico das soluções de marketing analytics.")
+    doc.add_heading(f"[DS30] Roadmap - {client}", level=1)
+    p = doc.add_paragraph("Este documento apresenta o cronograma e o plano de ação sugerido com base no diagnóstico técnico das soluções de marketing analytics.")
 
     # --- FUNÇÃO AUXILIAR PARA INSERIR TEXTOS EDITADOS ---
     def inserir_sessao_roadmap(titulo, texto_editado):
-        if texto_editado and "Não há necessidade" not in texto_editado:
+        if texto_editado:
             doc.add_heading(titulo, level=2)
             for linha in texto_editado.split('\n'):
                 if linha.strip():
-                    # Adiciona como Bullet Point
-                    doc.add_paragraph(linha.strip(), style='List Bullet')
+                    content = re.sub(r'^\d+\.\s*', '', linha.strip(), flags=re.MULTILINE)
+                    doc.add_paragraph(content, style='List Number')
 
-    inserir_sessao_roadmap("Google Tag Gateway (GTG)", roadmap_gtg)
-    inserir_sessao_roadmap("Envio de Sinais (UPD / EC / ECL)", roadmap_upd)
-    inserir_sessao_roadmap("Integração de Conversões Offline (OCI)", roadmap_oci)
+
+    inserir_sessao_roadmap("Google Tag Gateway (GTG)", roadmap_data.get("gtg"))
+    inserir_sessao_roadmap("Envio de Sinais (GA UPD / EC / ECL)", roadmap_data.get("upd"))
+    inserir_sessao_roadmap("Integração de Conversões Offline (OCI)", roadmap_data.get("oci"))
 
     # --- SALVAR E FAZER UPLOAD ---
     doc_bytes = io.BytesIO()
@@ -561,18 +607,25 @@ def create_roadmap_doc(docs_service, drive_service, cliente_nome, folder_id, roa
         resumable=True
     )
 
-    file_metadata = {
-        'name': f'[DS30] Roadmap de Implementação - {cliente_nome}',
-        'parents': [folder_id],
-        'mimeType': 'application/vnd.google-apps.document'
-    }
-    file = drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id'
-    ).execute()
-    
-    doc_id = file.get('id')
+    if doc_id:
+        # Se o ficheiro já existir, este update SOBRESCREVE tudo, substituindo pelo conteúdo atualizado
+        file = drive_service.files().update(
+            fileId=doc_id,
+            media_body=media
+        ).execute()
+    else:
+
+        file_metadata = {
+            'name': f'[DS30] Roadmap - {client}',
+            'parents': [folder_id],
+            'mimeType': 'application/vnd.google-apps.document'
+        }
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id'
+        ).execute()
+        doc_id = file.get('id')
     doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
     pdf_url = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
     

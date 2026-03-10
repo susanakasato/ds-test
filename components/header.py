@@ -1,6 +1,6 @@
 from services.google_api import check_client_in_sheets, get_services
 import streamlit as st
-from services.utils import PLANILHA_ID, RANGE_PLANILHA, Diagnosis_Headers, get_column_index_from_diagnosis_db
+from services.utils import PLANILHA_ID, RANGE_PLANILHA, Diagnosis_Headers, get_column_index_from_diagnosis_db, getPlatformFromKey
 
 def limpar_form():
     # Encontra todas as chaves do formulário no Session State
@@ -17,30 +17,17 @@ def limpar_form():
         
     for key in chaves_imagem:
         del st.session_state[key]
-        
-# def update_session(key, value, valid_options=None):
-#     """Injeta um valor com segurança no formulário (Session State)"""
-#     if not value: return
-#     if valid_options and value not in valid_options: return
-#     st.session_state[key] = value
-
-# No arquivo header.py
 
 def carregar_dados_cliente():
     limpar_form() # Limpa o formulário antes de carregar os dados do cliente selecionado
     cliente_selecionado = st.session_state.get("dropdown_cliente")
     
-    # Se mudar para "Novo Cliente", limpa o formulário e para
-    if cliente_selecionado == "✨ Cadastrar Novo Cliente...":
-        st.text_input("Digite o nome do novo cliente *", key="k_client")
-        return
-
     # Caso contrário, busca os dados APENAS ESTA VEZ
     st.session_state['k_client'] = cliente_selecionado
     with st.spinner("Buscando dados no banco..."):
         try:
             sheets, _, _ = get_services()
-            _, _, _, row = check_client_in_sheets(sheets, PLANILHA_ID, RANGE_PLANILHA, cliente_selecionado, -1)
+            _, _, _, _, row = check_client_in_sheets(sheets, PLANILHA_ID, RANGE_PLANILHA, cliente_selecionado)
             
             if row:
                 def get_val(idx): return row[idx] if len(row) > idx else ""
@@ -61,7 +48,7 @@ def carregar_dados_cliente():
                 st.session_state['k_obs_gtg'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_GTG))
 
                 # --- UPD ---
-                st.session_state['k_gtm_analise'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_ANALYSIS))
+                st.session_state['k_gtm_analysis'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_ANALYSIS))
                 st.session_state['k_urls_forms'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.URLS_FORMS))
 
                 # --- GA --- 
@@ -75,7 +62,8 @@ def carregar_dados_cliente():
                 ec_platforms_formatted = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_PLATFORMS)).split("\n")
                 ec_platforms = []
                 for plat in ec_platforms_formatted:
-                    platform = plat.split(" (")[0] if " (" in plat else plat
+                    plat_key = plat.split(" (")[0] if " (" in plat else plat
+                    platform = getPlatformFromKey(plat_key)
                     ec_platforms.append(platform) 
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
@@ -90,11 +78,12 @@ def carregar_dados_cliente():
                 ecl_platforms_formatted = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_PLATFORMS)).split("\n")
                 ecl_platforms = []
                 for plat in ecl_platforms_formatted:
-                    platform = plat.split(" (")[0] if " (" in plat else plat
+                    plat_key = plat.split(" (")[0] if " (" in plat else plat
+                    platform = getPlatformFromKey(plat_key)
                     ecl_platforms.append(platform) 
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
-                        st.session_state[f'k_ecl_platform_{platform}'] = status
+                        st.session_state[f'k_ecl_platform_{plat_key}'] = status
                 st.session_state['k_ecl_platforms'] = ecl_platforms
                 st.session_state['k_ecl_hard'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_HARDCODED))
                 st.session_state['existing_img_ecl'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_IMG_LINKS))
@@ -105,7 +94,7 @@ def carregar_dados_cliente():
                 st.session_state['k_obs_upd'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_SIGNALS))
                 st.session_state['k_oci_impl'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_IMPLEMENTED))
                 st.session_state['k_oci_platform'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_PLATFORM))
-                st.session_state['k_oci_metodo'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_METHOD))
+                st.session_state['k_oci_method'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_METHOD))
                 oci_infos = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_INFOS))
                 if oci_infos:
                     st.session_state['k_oci_infos'] = [x.strip() for x in oci_infos.split('\n') if x.strip() in ["gclid", "dclid", "braid", "email", "telefone", "endereço IP", "id da transação", "match id", "atributos de sessão"]]
@@ -115,32 +104,52 @@ def carregar_dados_cliente():
                 st.session_state['k_obs_oci'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_OCI))
 
                 # --- DOCS ---
-                doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.DOC_ID))
-                st.session_state['k_doc_url'] = f"https://docs.google.com/document/d/{doc_id}/edit"
-                st.session_state['k_pdf_url'] = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
+                diagnosis_doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID))
+                st.session_state['k_diagnosis_doc_id'] = diagnosis_doc_id
+                st.session_state['k_diagnosis_doc_url'] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/edit"
+                st.session_state['k_diagnosis_pdf_url'] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/export?format=pdf"
 
-                st.success("✨ Formulário preenchido com dados existentes!")    
+                # --- ROADMAP ---
+                st.session_state['k_gtg_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTG_ROADMAP))
+                st.session_state['k_upd_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_ROADMAP))
+                st.session_state['k_oci_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_ROADMAP))
+                
+                roadmap_doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID))
+                st.session_state['k_roadmap_doc_id'] = roadmap_doc_id
+                st.session_state['k_roadmap_doc_url'] = f"https://docs.google.com/document/d/{roadmap_doc_id}/edit"
+                st.session_state['k_roadmap_pdf_url'] = f"https://docs.google.com/document/d/{roadmap_doc_id}/export?format=pdf"
+
+                st.session_state['load_form_status'] = True
+                   
         except Exception as e:
-            st.error(f"Erro ao carregar: {e}")
+            st.session_state['load_form_status'] = e
 
 def render_header():
     opcoes_dropdown = ["✨ Cadastrar Novo Cliente..."] + st.session_state['lista_clientes']
 
-    col1, col2 = st.columns([3, 1])
+    st.write("Selecione o cliente ou cadastre um novo:")
+    col1, col2 = st.columns([3, 1], vertical_alignment="center")
     with col1:
-        # O Dropdown principal
         cliente_selecionado = st.selectbox(
-            "Selecione o Cliente ou cadastre um novo *", 
+            "Cliente",
             options=opcoes_dropdown, 
             key="dropdown_cliente",
-            on_change=carregar_dados_cliente
+            on_change=carregar_dados_cliente,
+            label_visibility="collapsed"
         )
         
     with col2:
-        st.write("") 
-        st.write("") 
-        # NOVO: Botão de Limpeza
         if st.button("🧹 Limpar Formulário", use_container_width=True):
             limpar_form()
+
+    if cliente_selecionado == "✨ Cadastrar Novo Cliente...":
+        st.text_input("Digite o nome do novo cliente *", key="k_client")
+        return
+
+    
+    if st.session_state.get("load_form_status") and st.session_state.get("load_form_status") == True:
+        st.success("✨ Formulário preenchido com dados existentes!") 
+    elif st.session_state.get("load_form_status") and st.session_state.get("load_form_status") != None:
+        st.error(f"Erro ao carregar cliente: {st.session_state.get('k_cliload_form_statusent')}")
 
     

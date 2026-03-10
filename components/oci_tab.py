@@ -12,7 +12,7 @@ def render_oci_tab(dados_formulario):
         dados_formulario['oci_metodo'] = st.selectbox(
             "Qual método de integração é utilizado?",
             ("Selecione", "Data Manager API", "Data Manager UI", "Google Ads API", "Search Ads API", "Campaign Manager API"),
-            key='k_oci_metodo'
+            key='k_oci_method'
         )
         
         dados_formulario['oci_infos'] = st.multiselect(

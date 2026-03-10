@@ -23,10 +23,11 @@ def render_diagnosis_tab(cliente_nome):
     # BOTÃO DE SUBMISSÃO E FLUXO DE DADOS
     # ==========================================
     st.divider()
-    if st.button("💾 Salvar no Sheets e Gerar Documento", type="primary"):
+    if st.button("💾 Salvar e Gerar Documento de Diagnóstico", type="primary", use_container_width=True):
         if not cliente_nome:
             st.error("Por favor, preencha o Nome do Cliente antes de salvar.")
         else:
+            print("Conectando ao Google")
             with st.spinner("Conectando ao Google Workspace..."):
                 try:
                     # 1. Inicializa os serviços
@@ -37,9 +38,8 @@ def render_diagnosis_tab(cliente_nome):
                     NOME_CLIENTE = dados_formulario['cliente']
 
                     # 1. Verifica se o cliente existe no Sheets
-                    linha_cliente, pasta_cliente_id, doc_id, _ = check_client_in_sheets(
-                        sheets_service, PLANILHA_ID, RANGE_PLANILHA, NOME_CLIENTE, folder_id_col_index=-1 
-                        # folder_id_col_index é o índice da coluna onde o ID da pasta fica salvo (ex: -1 é a última coluna)
+                    linha_cliente, pasta_cliente_id, doc_id, _, _ = check_client_in_sheets(
+                        sheets_service, PLANILHA_ID, RANGE_PLANILHA, NOME_CLIENTE
                     )
 
                     # 2. Se não existir, cria a nova pasta no Drive
@@ -160,14 +160,14 @@ def render_diagnosis_tab(cliente_nome):
                     # 3. Cria o documento já jogando para dentro da pasta certa
                     st.info("Gerando o documento de diagnóstico...")
                     doc_id, doc_url, pdf_url = create_update_diagnostic_doc(
-                        docs_service, drive_service, NOME_CLIENTE, dados_formulario, pasta_cliente_id, doc_id
+                        drive_service, NOME_CLIENTE, dados_formulario, pasta_cliente_id, doc_id
                     )
-                    st.session_state['k_doc_url'] = doc_url
-                    st.session_state['k_pdf_url'] = pdf_url
+                    st.session_state['k_diagnosis_doc_url'] = doc_url
+                    st.session_state['k_diagnosis_pdf_url'] = pdf_url
 
                     # linha_dados[29] = doc_id  # Coluna AD: ID do Documento
                     # linha_dados[30] = pasta_cliente_id  # Coluna AE: ID da
-                    linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.DOC_ID)] = doc_id
+                    linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID)] = doc_id
                     linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.DRIVE_ID)] = pasta_cliente_id
 
                     # 3. Salva no Sheets e verifica se tinha doc antigo
@@ -182,10 +182,9 @@ def render_diagnosis_tab(cliente_nome):
                         
                 except Exception as e:
                     st.error(f"Erro ao processar integração com Google: {e}")
-                    print (e)
-    if st.session_state.get('k_doc_url') and st.session_state.get('k_pdf_url'):
+    if st.session_state.get('k_diagnosis_doc_url') and st.session_state.get('k_diagnosis_pdf_url'):
         col1, col2 = st.columns(2)
         with col1:
-            st.link_button("➡️ Abrir Google Docs", st.session_state.get('k_doc_url'), use_container_width=True)
+            st.link_button("➡️ Abrir Google Docs", st.session_state.get('k_diagnosis_doc_url'), use_container_width=True)
         with col2:
-            st.link_button("⬇️ Baixar PDF", st.session_state.get('k_pdf_url'), use_container_width=True)
+            st.link_button("⬇️ Baixar PDF", st.session_state.get('k_diagnosis_pdf_url'), use_container_width=True)
