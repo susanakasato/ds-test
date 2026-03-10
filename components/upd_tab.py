@@ -136,9 +136,9 @@ def render_upd_tab(dados_formulario):
     st.header("Envio de Sinais UPD")
 
     tms_atual = st.session_state.get('tms_type')
+    st.subheader("Análise geral de sinais UPD")
 
     if tms_atual == "Google Tag Manager":
-        st.subheader("Análise do Container GTM")
         uploaded_file = st.file_uploader("Upload do GTM Container Export (JSON)", type="json")
         
         if uploaded_file is not None or st.session_state.get('k_gtm_analysis'):
@@ -159,6 +159,9 @@ def render_upd_tab(dados_formulario):
                 st.error(f"Erro ao ler ou analisar o arquivo JSON: {e}")
 
     dados_formulario['urls_forms'] = st.text_area("Liste as URLs onde há a presença de formulários possíveis de coleta de dados UPD:", key='k_urls_forms')
+
+    st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="img_upd")
+    mostrar_imagens_existentes('existing_img_upd', "UPD") 
 
     st.divider()
 

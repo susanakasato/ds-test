@@ -20,15 +20,16 @@ def limpar_form():
 
 def carregar_dados_cliente():
     limpar_form() # Limpa o formulário antes de carregar os dados do cliente selecionado
-    cliente_selecionado = st.session_state.get("dropdown_cliente")
+    selected_client = st.session_state.get("dropdown_cliente")
     
     # Caso contrário, busca os dados APENAS ESTA VEZ
-    st.session_state['k_client'] = cliente_selecionado
+    st.session_state['k_client'] = selected_client
+    print("Carregando dados")
+    print(st.session_state.get('k_client'))
     with st.spinner("Buscando dados no banco..."):
         try:
             sheets, _, _ = get_services()
-            _, _, _, _, row = check_client_in_sheets(sheets, PLANILHA_ID, RANGE_PLANILHA, cliente_selecionado)
-            
+            _, _, _, _, row = check_client_in_sheets(sheets, PLANILHA_ID, RANGE_PLANILHA, selected_client)
             if row:
                 def get_val(idx): return row[idx] if len(row) > idx else ""
                 
@@ -50,6 +51,7 @@ def carregar_dados_cliente():
                 # --- UPD ---
                 st.session_state['k_gtm_analysis'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_ANALYSIS))
                 st.session_state['k_urls_forms'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.URLS_FORMS))
+                st.session_state['existing_img_upd'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_IMG_LINKS))
 
                 # --- GA --- 
                 st.session_state['k_ga_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_UPD_CONFIG))
@@ -113,7 +115,7 @@ def carregar_dados_cliente():
                 st.session_state['k_gtg_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTG_ROADMAP))
                 st.session_state['k_upd_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_ROADMAP))
                 st.session_state['k_oci_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_ROADMAP))
-                
+
                 roadmap_doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID))
                 st.session_state['k_roadmap_doc_id'] = roadmap_doc_id
                 st.session_state['k_roadmap_doc_url'] = f"https://docs.google.com/document/d/{roadmap_doc_id}/edit"
@@ -130,7 +132,7 @@ def render_header():
     st.write("Selecione o cliente ou cadastre um novo:")
     col1, col2 = st.columns([3, 1], vertical_alignment="center")
     with col1:
-        cliente_selecionado = st.selectbox(
+        selected_client = st.selectbox(
             "Cliente",
             options=opcoes_dropdown, 
             key="dropdown_cliente",
@@ -142,14 +144,14 @@ def render_header():
         if st.button("🧹 Limpar Formulário", use_container_width=True):
             limpar_form()
 
-    if cliente_selecionado == "✨ Cadastrar Novo Cliente...":
+    if selected_client == "✨ Cadastrar Novo Cliente...":
         st.text_input("Digite o nome do novo cliente *", key="k_client")
         return
 
-    
-    if st.session_state.get("load_form_status") and st.session_state.get("load_form_status") == True:
+    elif st.session_state.get("load_form_status") and st.session_state.get("load_form_status") == True:
         st.success("✨ Formulário preenchido com dados existentes!") 
+
     elif st.session_state.get("load_form_status") and st.session_state.get("load_form_status") != None:
-        st.error(f"Erro ao carregar cliente: {st.session_state.get('k_cliload_form_statusent')}")
+        st.error(f"Erro ao carregar cliente: {st.session_state.get('k_client')}")
 
     

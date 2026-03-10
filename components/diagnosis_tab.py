@@ -24,8 +24,10 @@ def render_diagnosis_tab(cliente_nome):
     # ==========================================
     st.divider()
     if st.button("💾 Salvar e Gerar Documento de Diagnóstico", type="primary", use_container_width=True):
+        print(f"primeir: {cliente_nome}")
+        print(f"segundo: {st.session_state.get('k_client')}")
         if not cliente_nome:
-            st.error("Por favor, preencha o Nome do Cliente antes de salvar.")
+            st.error("Por favor, preencha o nome do cliente antes de salvar.")
         else:
             print("Conectando ao Google")
             with st.spinner("Conectando ao Google Workspace..."):
@@ -89,17 +91,20 @@ def render_diagnosis_tab(cliente_nome):
                     link_ec, raw_ec   = processar_ou_resgatar_imagens(st.session_state.get('img_ec'), "EC", st.session_state.get('existing_img_ec'))
                     link_ecl, raw_ecl = processar_ou_resgatar_imagens(st.session_state.get('img_ecl'), "ECL", st.session_state.get('existing_img_ecl'))
                     link_oci, raw_oci = processar_ou_resgatar_imagens(st.session_state.get('img_oci'), "OCI", st.session_state.get('existing_img_oci'))
+                    link_upd, raw_upd = processar_ou_resgatar_imagens(st.session_state.get('img_upd'), "UPD", st.session_state.get('existing_img_upd'))
 
                     # Salva os resultados no dados_formulario para a criação do Doc e da linha do Sheets
                     dados_formulario['link_img_ga4'] = link_ga4
                     dados_formulario['link_img_ec']  = link_ec
                     dados_formulario['link_img_ecl'] = link_ecl
                     dados_formulario['link_img_oci'] = link_oci
+                    dados_formulario['link_img_upd'] = link_upd
                     
                     dados_formulario['raw_img_ga4'] = raw_ga4
                     dados_formulario['raw_img_ec']  = raw_ec
                     dados_formulario['raw_img_ecl'] = raw_ecl
                     dados_formulario['raw_img_oci'] = raw_oci
+                    dados_formulario['raw_img_upd'] = raw_upd
 
                     # Função auxiliar para formatar listas (multiselect) como texto separado por vírgula
                     def formatar_lista(item):
@@ -126,6 +131,7 @@ def render_diagnosis_tab(cliente_nome):
 
                     linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_ANALYSIS)] = formatar_lista(dados_formulario.get('gtm_analise'))
                     linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.URLS_FORMS)] = formatar_lista(dados_formulario.get('urls_forms'))
+                    linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_IMG_LINKS)] = formatar_lista(dados_formulario.get('link_img_upd'))
 
                     linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_UPD_CONFIG)] = formatar_lista(dados_formulario.get('ga_platform'))
                     linha_dados[get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_HARDCODED)] = formatar_lista(dados_formulario.get('ga_hardcoded'))

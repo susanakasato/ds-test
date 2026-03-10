@@ -103,18 +103,17 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_n
     sheet = sheets_service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
     values = result.get('values', [])
-    
     for i, row in enumerate(values):
         if len(row) > 0 and row[0].lower() == cliente_nome.lower():
+            while len(row) < RANGE_PLANILHA_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
+                row.append("")
             folder_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DRIVE_ID)]
             diagnosis_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID)]
             roadmap_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID)]
-            while len(row) < RANGE_PLANILHA_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
-                row.append("")
             return i + 1, folder_id, diagnosis_doc_id, roadmap_doc_id, row 
             
     # ADICIONADO UM NONE EXTRA AQUI PARA QUANDO NÃO ACHAR NADA:
-    return -1, None, None, None
+    return -1, None, None, None, None
 
 def save_to_sheets(sheets_service, spreadsheet_id, range_name, linha_encontrada, dados_linha):
     """Salva os dados (Atualiza se a linha existir, ou adiciona uma nova)."""
@@ -430,6 +429,9 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
                 doc.add_paragraph(dados_formulario.get('ga_upd_blocks'))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente.")
+    elif dados_formulario.get('ga_platform') == 'Sim':
+        doc.add_paragraph('A configuração na interface do GA foi executada corretamente.', style="List Bullet")
+
     
     # --- SUBSEÇÃO EC ---
     doc.add_heading("Enhanced Conversions", level=4)
@@ -513,7 +515,7 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
             for dado in dados:
                 doc.add_paragraph(dado, style='List Bullet 2')
     add_images("Offline Conversions Integration (OCI)", dados_formulario.get('raw_img_oci'))
-    if dados_formulario.get('oci_obs'):
+    if dados_formulario.get('obs_oci'):
         doc.add_heading("Observações - Offline Conversion Integration (OCI)", level=3)
         doc.add_paragraph(dados_formulario.get('oci_obs'))
     if dados_formulario.get('oci_implementado') == "Não":

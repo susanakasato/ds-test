@@ -57,17 +57,22 @@ def gerar_roadmap_ia(diagnosis_data):
     {json.dumps(atividades_catalogo, indent=2, ensure_ascii=False)}
     
     INSTRUÇÕES:
-    1. Analise o diagnóstico. Se o cliente já tem algo implementado (ex: GTG="Sim"), o roadmap daquela área deve dizer apenas "Não há necessidade de roadmap. Cliente já atende os requisitos.".
-    2. Para as áreas que precisam de implementação, crie um plano de ação passo a passo listado numericamente.
-    3. Use as 'Atividades Pré-Mapeadas' que fizerem sentido.
-    4. CRIE NOVAS ATIVIDADES sugeridas por você (IA) que complementem o plano de forma inteligente (adicione a tag ✨[Sugestão IA] antes do nome da atividade).
-    5. Retorne ESTRITAMENTE um objeto JSON com as chaves: "roadmap_gtg", "roadmap_upd" e "roadmap_oci". O valor de cada chave, que corresponde à uma seção, deve conter um array, contendo as atividades listadas, e cada atividade deve ser um json com os campos "activity" e "description".
-    6. Avalie a necessidade das atividades pré-mapeadas, pois há cenários em que nem todas as atividades serão necessárias. Assim como, há cenários em que você pode sugerir novas atividades, que possam encaixar perfeitamente.
-    7. Para o caso de envio de sinais, considere a análise do gtm se estiver disponível, onde também é possível identificar se o cliente já possui os recursos configurados e se está configurado corretamente. Caso já esteja configurado, o ideal seria adicionar atividades de validação de hash e de configuração.
-    8. Analise a informação sobre a possibilidade de implementação/configuração e os possíveis bloqueios para implementação de todas as vertentes. Se houver bloqueios, considere atividades de validação de hipóteses, como por exemplo: "Validar hipótese de bloqueio X com o time de desenvolvimento do cliente (2h)".
-    9. Caso a configuração/implementação esteja sinalizada como feita, inserir atividade de validação do que já está implementado/configurado, para garantir que o que foi implementado está funcionando corretamente e coletando os dados necessários.
-    10. Caso a configuração/implementação esteja sinalizada como não feita, inserir atividade de configuração/implementação, mesmo que não esteja pré-mapeada, para garantir que o roadmap entregue ao cliente seja completo e com um passo a passo claro do que deve ser feito.
-    11. No roadmap final, não há a necessidade de inserir o id da atividade.
+    - GTG é Google Tag Gateway, um recurso do Google onde será configurado um proxy nas requisições de coleta de dados Google, cujo domínio será o mesmo do site principal, tornando a coleta first-party.
+    - Caso o GTG esteja implementado, não precisa gerar nenhum roadmap.
+    - GA UPC é Google Analytics User Provided Data, um recurso onde é possível enviar dados pii do usuário, como email e telefone, para o GA, possibilitando melhores análises na plataforma, com maires possibilidade para atribuição de conversão em campanhas.
+    - EC é Enhanced Conversions, uma funcionalidade onde o intuito é enviar dados UPD do usuário, como email e telefone, junto das conversões, a fim de aumentar seu sinais e melhorar a mensuração das campanhas. Esses dados são enviados de forma segura e criptografado com SHA256.
+    - ECL é Enhanced Conversions for Leads, uma funcionalidade onde o inuito é enviar dados UPD do usuário para ferramentas Google, fornecendo mais dados que poderão ser utilizados para cruzar no momento de importação de conversões offline, sendo o email e telefone informações que geralmente estão presentes em ferramentas de CRM.
+    - Analisar se o GA UPD, EC e ECL está configurado corretamente em todos os pontos, hardcoded ou pelo gtm, e em todas as plataformas utilizadas pelo cliente. O roadmap deverá ser baseadp no diagnóstico e conforme o status de cada configuração necessária para considerar a funcionalidade EC configurada devidamente.
+    - OCI é Offline Conversion Import, um recurso que permite as ferramentas de marketing Google a ter visibilidade de conversões offline, e por fim ter mais insumos para a mensuração e otimização de campanhas. Para que esse cruzamento seja possível, é necessário fornecer na importação dados de campanhas, como por exemplo, gclid, dclid, braid, entre outros. Com o ECL, também será possível fazer esse cruzamento.
+    - Caso a configuração/implementação esteja sinalizada como feita, inserir atividade de validação do que já está implementado/configurado, para garantir que o que foi implementado está funcionando corretamente e coletando os dados necessários.
+    - Caso a configuração/implementação esteja sinalizada como não feita, inserir atividade de configuração/implementação, mesmo que não esteja pré-mapeada, para garantir que o roadmap entregue ao cliente seja completo e com um passo a passo claro do que deve ser feito.
+    - Para as áreas que precisam de implementação, crie um plano de ação passo a passo.
+    - Analise a informação sobre a possibilidade de implementação/configuração e os possíveis bloqueios para implementação de todas as vertentes. Se houver bloqueios, considere atividades de validação de hipóteses, como por exemplo: "Validar hipótese de bloqueio X com o time de desenvolvimento do cliente (2h)".
+    - Para o caso de envio de sinais, considere a análise do gtm se estiver disponível, onde também é possível identificar se o cliente já possui os recursos configurados e se está configurado corretamente. Caso já esteja configurado, o ideal seria adicionar atividades de validação de hash e de configuração.
+    - Avalie a necessidade das atividades pré-mapeadas, pois há cenários em que nem todas as atividades serão necessárias. Assim como, há cenários em que você pode sugerir novas atividades, que possam encaixar perfeitamente.
+    - CRIE NOVAS ATIVIDADES sugeridas por você (IA) que complementem o plano de forma inteligente (adicione a tag ✨[Sugestão IA] antes do nome da atividade).
+    - Retorne ESTRITAMENTE um objeto JSON com as chaves: "roadmap_gtg", "roadmap_upd" e "roadmap_oci". O valor de cada chave, que corresponde à uma seção, deve conter um array, contendo as atividades listadas, e cada atividade deve ser um json com os campos "activity" e "description".
+    - No roadmap final, não há a necessidade de inserir o id da atividade. 
     """
 
     try:
