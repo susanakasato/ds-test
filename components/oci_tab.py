@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st # pyright: ignore[reportMissingImports]
 from services.utils import State_Keys_Map, show_existing_images
 
 def render_oci_tab():

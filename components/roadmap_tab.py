@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st # pyright: ignore[reportMissingImports]
 from services.google_api import check_client_in_sheets, get_doc_content, get_services, create_roadmap_doc, save_to_sheets
 from services.utils import SHEETS_RANGE, SHEETS_ID, get_sheet_column_index, Headers_Map, State_Keys_Map
 from services.ia_service import gerar_roadmap_ia # <-- IMPORTAR O NOVO SERVIÇO

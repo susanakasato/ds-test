@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st # pyright: ignore[reportMissingImports]
 from components.gtg_tab import render_gtg_tab
 from components.upd_tab import render_upd_tab
 from components.oci_tab import render_oci_tab

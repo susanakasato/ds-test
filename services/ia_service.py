@@ -1,7 +1,7 @@
 import json
-import streamlit as st
+import streamlit as st # pyright: ignore[reportMissingImports]
 from google import genai
-from google.genai import types
+from google.genai import types # pyright: ignore[reportMissingImports]
 
 def gerar_roadmap_ia(diagnosis_data):
     # 1. Recupera a chave do arquivo .streamlit/secrets.toml

@@ -1,5 +1,5 @@
 from enum import Enum
-import streamlit as st
+import streamlit as st # pyright: ignore[reportMissingImports]
 
 SHEETS_ID = '1D7TLq7-ThUj5WyUn1Ys3X05jKilDDmYjpLSxngK6ij4'
 SHEETS_RANGE = 'DB Diagnóstico!A:AU'

@@ -2,18 +2,18 @@ import os
 import io
 import re
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-from google_auth_oauthlib.flow import Flow
-from docx import Document
-from docx.shared import Inches, Pt, RGBColor
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.oxml.shared import qn
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from googleapiclient.http import MediaIoBaseDownload
+from google.auth.transport.requests import Request # pyright: ignore[reportMissingImports]
+from google.oauth2.credentials import Credentials # pyright: ignore[reportMissingImports]
+from googleapiclient.discovery import build # pyright: ignore[reportMissingImports]
+from googleapiclient.http import MediaIoBaseUpload # pyright: ignore[reportMissingImports]
+from google_auth_oauthlib.flow import Flow # pyright: ignore[reportMissingImports]
+from docx import Document # pyright: ignore[reportMissingImports]
+from docx.shared import Inches, Pt, RGBColor # pyright: ignore[reportMissingImports]
+from docx.oxml import OxmlElement # pyright: ignore[reportMissingImports]
+from docx.oxml.ns import qn # pyright: ignore[reportMissingImports]
+from docx.oxml.shared import qn # pyright: ignore[reportMissingImports]
+from docx.enum.text import WD_ALIGN_PARAGRAPH # pyright: ignore[reportMissingImports]
+from googleapiclient.http import MediaIoBaseDownload # pyright: ignore[reportMissingImports]
 from services.utils import get_sheet_column_index, Headers_Map, State_Keys_Map, SHEETS_RANGE_WIDTH
 
 # Escopos de acesso necessários (Sheets, Docs e Drive)
