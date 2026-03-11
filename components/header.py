@@ -1,157 +1,161 @@
-from services.google_api import check_client_in_sheets, get_services
 import streamlit as st
-from services.utils import PLANILHA_ID, RANGE_PLANILHA, Diagnosis_Headers, get_column_index_from_diagnosis_db, getPlatformFromKey
+from services.google_api import check_client_in_sheets, get_services
+from services.utils import SHEETS_ID, SHEETS_RANGE, SHEETS_RANGE_WIDTH, Headers_Map, get_sheet_column_index, get_platform_from_key, State_Keys_Map
 
-def limpar_form():
-    # Encontra todas as chaves do formulário no Session State
-    chaves_para_apagar = [key for key in st.session_state.keys() if key.startswith('k_')]
-    chaves_imagem = [key for key in st.session_state.keys() if key.startswith('img_') or key.startswith('existing_img_')]
-    # Apaga uma por uma
-    for key in chaves_para_apagar:
-        if isinstance(st.session_state[key], list):
-            st.session_state[key] = []
-        elif isinstance(st.session_state[key], str):
-            st.session_state[key] = ""
-        else:
-            st.session_state[key] = None
-        
-    for key in chaves_imagem:
+NEW_CLIENT_PLACEHOLDER = "✨ Cadastrar Novo Cliente..."
+
+def clear_form():
+    # keys = st.session_state.keys()
+    # form_keys = [key for key in st.session_state.keys() if key.startswith('form_')]
+    # for key in chaves_para_apagar:
+    #     if isinstance(st.session_state[key], list):
+    #         st.session_state[key] = []
+    #     elif isinstance(st.session_state[key], str):
+    #         st.session_state[key] = ""
+    #     else:
+    #         st.session_state[key] = None
+    keys = [key for key in st.session_state.keys() if key.startswith('form_')]
+    for key in keys:
         del st.session_state[key]
 
 def carregar_dados_cliente():
-    limpar_form() # Limpa o formulário antes de carregar os dados do cliente selecionado
-    selected_client = st.session_state.get("dropdown_cliente")
+    if st.session_state.get("dropdown_client") != NEW_CLIENT_PLACEHOLDER:
+        return
     
-    # Caso contrário, busca os dados APENAS ESTA VEZ
-    st.session_state['k_client'] = selected_client
-    print("Carregando dados")
-    print(st.session_state.get('k_client'))
+    clear_form()
+    st.session_state['form_load_status'] = None
+    st.session_state[State_Keys_Map.CLIENT] = st.session_state.get("dropdown_client")
     with st.spinner("Buscando dados no banco..."):
         try:
-            sheets, _, _ = get_services()
-            _, _, _, _, row = check_client_in_sheets(sheets, PLANILHA_ID, RANGE_PLANILHA, selected_client)
+            sheets_service, _, _ = get_services()
+            _, _, _, _, row = check_client_in_sheets(sheets_service, SHEETS_ID, SHEETS_RANGE, st.session_state.get('form_client'))
             if row:
-                def get_val(idx): return row[idx] if len(row) > idx else ""
+                while len(row) < SHEETS_RANGE_WIDTH:
+                    row.append("")
                 
                 # --- GOOGLE TAG GATEWAY ---
-                st.session_state['k_gtg'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTG_IMPLEMENTED))
-                st.session_state['k_cdn'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.CDN))
-                st.session_state['k_iac'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.USE_IAC))
-                st.session_state['k_usa_tms'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.USE_TMS))
-                st.session_state['k_tms_type'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.TMS_TYPE))
-                st.session_state['k_gtm_cs'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.USE_GTM_CS))
-                st.session_state['k_gtm_cs_ids'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_CS_IDS))
-                st.session_state['k_gtm_ss'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.USE_GTM_SS))
-                st.session_state['k_gtm_ss_server'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_SS_SERVER))
-                st.session_state['k_novos_caminhos'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.AUTH_NEW_DOMAIN_PATH))
-                st.session_state['k_possible_gtg'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.POSSIBLE_GTG))
-                st.session_state['k_gtg_blocks'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTG_BLOCKS))
-                st.session_state['k_obs_gtg'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_GTG))
+                st.session_state[State_Keys_Map.GTG_IMPLEMENTED] = row[get_sheet_column_index(Headers_Map.GTG_IMPLEMENTED)]
+                st.session_state[State_Keys_Map.CDN] = row[get_sheet_column_index(Headers_Map.CDN)]
+                st.session_state[State_Keys_Map.USE_IAC] = row[get_sheet_column_index(Headers_Map.USE_IAC)]
+                st.session_state[State_Keys_Map.USE_TMS] = row[get_sheet_column_index(Headers_Map.USE_TMS)]
+                st.session_state[State_Keys_Map.TMS_TYPE] = row[get_sheet_column_index(Headers_Map.TMS_TYPE)]
+                st.session_state[State_Keys_Map.USE_GTM_CS] = row[get_sheet_column_index(Headers_Map.USE_GTM_CS)]
+                st.session_state[State_Keys_Map.GTM_CS_IDS] = row[get_sheet_column_index(Headers_Map.GTM_CS_IDS)]
+                st.session_state[State_Keys_Map.GTM_SS] = row[get_sheet_column_index(Headers_Map.USE_GTM_SS)]
+                st.session_state[State_Keys_Map.GTM_SS_SERVER] = row[get_sheet_column_index(Headers_Map.GTM_SS_SERVER)]
+                st.session_state[State_Keys_Map.AUTH_NEW_DOMAIN_PATH] = row[get_sheet_column_index(Headers_Map.AUTH_NEW_DOMAIN_PATH)]
+                st.session_state[State_Keys_Map.POSSIBLE_GTG] = row[get_sheet_column_index(Headers_Map.POSSIBLE_GTG)]
+                st.session_state[State_Keys_Map.GTG_BLOCKS] = row[get_sheet_column_index(Headers_Map.GTG_BLOCKS)]
+                st.session_state[State_Keys_Map.GTG_PS] = row[get_sheet_column_index(Headers_Map.GTG_PS)]
 
                 # --- UPD ---
-                st.session_state['k_gtm_analysis'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTM_ANALYSIS))
-                st.session_state['k_urls_forms'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.URLS_FORMS))
-                st.session_state['existing_img_upd'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_IMG_LINKS))
+                st.session_state[State_Keys_Map.GTM_ANALYSIS] = row[get_sheet_column_index(Headers_Map.GTM_ANALYSIS)]
+                st.session_state[State_Keys_Map.FORM_URLS] = row[get_sheet_column_index(Headers_Map.FORM_URLS)]
+                st.session_state[State_Keys_Map.UPD_IMG_LINKS] = row[get_sheet_column_index(Headers_Map.UPD_IMG_LINKS)]
 
                 # --- GA --- 
-                st.session_state['k_ga_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_UPD_CONFIG))
-                st.session_state['k_ga_hard'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_HARDCODED))
-                st.session_state['existing_img_ga4'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_IMG_LINKS))
-                st.session_state['k_ga_upd_possible_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_UPD_POSSIBLE_CONFIG))
-                st.session_state['k_ga_upd_blocks'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GA_UPD_BLOCKS))
-                
+                st.session_state[State_Keys_Map.GA_UPD_CONFIG] = row[get_sheet_column_index(Headers_Map.GA_UPD_CONFIG)]
+                st.session_state[State_Keys_Map.GA_HARDCODED] = row[get_sheet_column_index(Headers_Map.GA_HARDCODED)]
+                st.session_state[State_Keys_Map.GA_IMG_LINKS] = row[get_sheet_column_index(Headers_Map.GA_IMG_LINKS)]
+                st.session_state[State_Keys_Map.GA_UPD_POSSIBLE_CONFIG] = row[get_sheet_column_index(Headers_Map.GA_UPD_POSSIBLE_CONFIG)]
+                st.session_state[State_Keys_Map.GA_UPD_BLOCKS] = row[get_sheet_column_index(Headers_Map.GA_UPD_BLOCKS)]
+
                 # --- EC ---
-                ec_platforms_formatted = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_PLATFORMS)).split("\n")
+                ec_platforms_formatted = row[get_sheet_column_index(Headers_Map.EC_PLATFORMS)].split("\n")
                 ec_platforms = []
                 for plat in ec_platforms_formatted:
                     plat_key = plat.split(" (")[0] if " (" in plat else plat
-                    platform = getPlatformFromKey(plat_key)
+                    platform = get_platform_from_key(plat_key)
                     ec_platforms.append(platform) 
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
-                        st.session_state[f'k_ec_platform_{platform}'] = status
-                st.session_state['k_ec_platforms'] = ec_platforms
-                st.session_state['k_ec_hard'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_HARDCODED))
-                st.session_state['existing_img_ec'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_IMG_LINKS))
-                st.session_state['k_ec_possible_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_POSSIBLE_CONFIG))
-                st.session_state['k_ec_blocks'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.EC_BLOCKS))
+                        st.session_state[f'form_ec_platform_{platform}'] = status
+                st.session_state[State_Keys_Map.EC_PLATFORMS] = ec_platforms
+                st.session_state[State_Keys_Map.EC_HARDCODED] = row[get_sheet_column_index(Headers_Map.EC_HARDCODED)]
+                st.session_state[State_Keys_Map.EC_IMG_LINKS] = row[get_sheet_column_index(Headers_Map.EC_IMG_LINKS)]
+                st.session_state[State_Keys_Map.EC_POSSIBLE_CONFIG] = row[get_sheet_column_index(Headers_Map.EC_POSSIBLE_CONFIG)]
+                st.session_state[State_Keys_Map.EC_BLOCKS] = row[get_sheet_column_index(Headers_Map.EC_BLOCKS)]
 
                 # --- ECL ---
-                ecl_platforms_formatted = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_PLATFORMS)).split("\n")
+                ecl_platforms_formatted = row[get_sheet_column_index(Headers_Map.ECL_PLATFORMS)].split("\n")
                 ecl_platforms = []
                 for plat in ecl_platforms_formatted:
                     plat_key = plat.split(" (")[0] if " (" in plat else plat
-                    platform = getPlatformFromKey(plat_key)
+                    platform = get_platform_from_key(plat_key)
                     ecl_platforms.append(platform) 
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
-                        st.session_state[f'k_ecl_platform_{plat_key}'] = status
-                st.session_state['k_ecl_platforms'] = ecl_platforms
-                st.session_state['k_ecl_hard'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_HARDCODED))
-                st.session_state['existing_img_ecl'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_IMG_LINKS))
-                st.session_state['k_ecl_possible_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_POSSIBLE_CONFIG))
-                st.session_state['k_ecl_blocks'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ECL_BLOCKS))
+                        st.session_state[f'form_ecl_platform_{plat_key}'] = status
+                st.session_state[State_Keys_Map.ECL_PLATFORMS] = ecl_platforms
+                st.session_state[State_Keys_Map.ECL_HARDCODED] = row[get_sheet_column_index(Headers_Map.ECL_HARDCODED)]
+                st.session_state[State_Keys_Map.ECL_IMG_LINKS] = row[get_sheet_column_index(Headers_Map.ECL_IMG_LINKS)]
+                st.session_state[State_Keys_Map.ECL_POSSIBLE_CONFIG] = row[get_sheet_column_index(Headers_Map.ECL_POSSIBLE_CONFIG)]
+                st.session_state[State_Keys_Map.ECL_BLOCKS] = row[get_sheet_column_index(Headers_Map.ECL_BLOCKS)]
+
+                st.session_state[State_Keys_Map.UPD_PS] = row[get_sheet_column_index(Headers_Map.UPD_PS)]
 
                 # --- OCI ---
-                st.session_state['k_obs_upd'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_SIGNALS))
-                st.session_state['k_oci_impl'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_IMPLEMENTED))
-                st.session_state['k_oci_platform'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_PLATFORM))
-                st.session_state['k_oci_method'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_METHOD))
-                oci_infos = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_INFOS))
+                st.session_state[State_Keys_Map.UPD_PS] = row[get_sheet_column_index(Headers_Map.OBS_SIGNALS)]
+                st.session_state[State_Keys_Map.OCI_IMPLEMENTED] = row[get_sheet_column_index(Headers_Map.OCI_IMPLEMENTED)]
+                st.session_state[State_Keys_Map.OCI_PLATFORM] = row[get_sheet_column_index(Headers_Map.OCI_PLATFORM)]
+                st.session_state[State_Keys_Map.OCI_METHOD] = row[get_sheet_column_index(Headers_Map.OCI_METHOD)]
+                oci_infos = row[get_sheet_column_index(Headers_Map.OCI_INFOS)]
                 if oci_infos:
-                    st.session_state['k_oci_infos'] = [x.strip() for x in oci_infos.split('\n') if x.strip() in ["gclid", "dclid", "braid", "email", "telefone", "endereço IP", "id da transação", "match id", "atributos de sessão"]]
-                st.session_state['existing_img_oci'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_IMG_LINKS))
-                st.session_state['k_oci_possible_config'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_POSSIBLE_CONFIG))
-                st.session_state['k_oci_blocks'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_BLOCKS))
-                st.session_state['k_obs_oci'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OBS_OCI))
+                    st.session_state[State_Keys_Map.OCI_INFOS] = [x.strip() for x in oci_infos.split('\n') if x.strip() in ["gclid", "dclid", "braid", "email", "telefone", "endereço IP", "id da transação", "match id", "atributos de sessão"]]
+                st.session_state[State_Keys_Map.OCI_IMG_LINKS] = row[get_sheet_column_index(Headers_Map.OCI_IMG_LINKS)]
+                st.session_state[State_Keys_Map.OCI_POSSIBLE_CONFIG] = row[get_sheet_column_index(Headers_Map.OCI_POSSIBLE_CONFIG)]
+                st.session_state[State_Keys_Map.OCI_BLOCKS] = row[get_sheet_column_index(Headers_Map.OCI_BLOCKS)]
+                st.session_state[State_Keys_Map.OCI_PS] = row[get_sheet_column_index(Headers_Map.OCI_PS)]
 
                 # --- DOCS ---
-                diagnosis_doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID))
-                st.session_state['k_diagnosis_doc_id'] = diagnosis_doc_id
-                st.session_state['k_diagnosis_doc_url'] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/edit"
-                st.session_state['k_diagnosis_pdf_url'] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/export?format=pdf"
+                diagnosis_doc_id = row[get_sheet_column_index(Headers_Map.DIAGNOSIS_DOC_ID)]
+                st.session_state[State_Keys_Map.DIAGNOSIS_DOC_ID] = diagnosis_doc_id
+                st.session_state[State_Keys_Map.DIAGNOSIS_DOC_URL] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/edit"
+                st.session_state[State_Keys_Map.DIAGNOSIS_PDF_URL] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/export?format=pdf"
 
                 # --- ROADMAP ---
-                st.session_state['k_gtg_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.GTG_ROADMAP))
-                st.session_state['k_upd_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.UPD_ROADMAP))
-                st.session_state['k_oci_roadmap'] = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.OCI_ROADMAP))
+                st.session_state[State_Keys_Map.GTG_ROADMAP] = row[get_sheet_column_index(Headers_Map.GTG_ROADMAP)]
+                st.session_state[State_Keys_Map.UPD_ROADMAP] = row[get_sheet_column_index(Headers_Map.UPD_ROADMAP)]
+                st.session_state[State_Keys_Map.OCI_ROADMAP] = row[get_sheet_column_index(Headers_Map.OCI_ROADMAP)]
 
-                roadmap_doc_id = get_val(get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID))
-                st.session_state['k_roadmap_doc_id'] = roadmap_doc_id
-                st.session_state['k_roadmap_doc_url'] = f"https://docs.google.com/document/d/{roadmap_doc_id}/edit"
-                st.session_state['k_roadmap_pdf_url'] = f"https://docs.google.com/document/d/{roadmap_doc_id}/export?format=pdf"
+                roadmap_doc_id = row[get_sheet_column_index(Headers_Map.ROADMAP_DOC_ID)]
+                st.session_state[State_Keys_Map.ROADMAP_DOC_ID] = roadmap_doc_id
+                st.session_state[State_Keys_Map.ROADMAP_DOC_URL] = f"https://docs.google.com/document/d/{roadmap_doc_id}/edit"
+                st.session_state[State_Keys_Map.ROADMAP_PDF_URL] = f"https://docs.google.com/document/d/{roadmap_doc_id}/export?format=pdf"
 
-                st.session_state['load_form_status'] = True
+                st.session_state['form_load_status'] = True
                    
         except Exception as e:
-            st.session_state['load_form_status'] = e
+            st.session_state['form_load_status'] = e
 
 def render_header():
-    opcoes_dropdown = ["✨ Cadastrar Novo Cliente..."] + st.session_state['lista_clientes']
+    dropdown_options = [NEW_CLIENT_PLACEHOLDER] + st.session_state['client_list']
 
     st.write("Selecione o cliente ou cadastre um novo:")
-    col1, col2 = st.columns([3, 1], vertical_alignment="center")
-    with col1:
+    clientSection, clearFormSection = st.columns([3, 1], vertical_alignment="center")
+    with clientSection:
         selected_client = st.selectbox(
             "Cliente",
-            options=opcoes_dropdown, 
-            key="dropdown_cliente",
+            options=dropdown_options, 
+            key="dropdown_client",
             on_change=carregar_dados_cliente,
             label_visibility="collapsed"
         )
         
-    with col2:
+    with clearFormSection:
         if st.button("🧹 Limpar Formulário", use_container_width=True):
-            limpar_form()
+            clear_form()
 
-    if selected_client == "✨ Cadastrar Novo Cliente...":
-        st.text_input("Digite o nome do novo cliente *", key="k_client")
+    if selected_client == NEW_CLIENT_PLACEHOLDER:
+        st.text_input("Digite o nome do novo cliente *", key="form_client")
         return
+    else:
+        st.session_state['form_client'] = selected_client
 
-    elif st.session_state.get("load_form_status") and st.session_state.get("load_form_status") == True:
-        st.success("✨ Formulário preenchido com dados existentes!") 
+        if st.session_state.get("form_load_status") and st.session_state.get("form_load_status") == True:
+            st.success("✨ Formulário preenchido com dados existentes!") 
 
-    elif st.session_state.get("load_form_status") and st.session_state.get("load_form_status") != None:
-        st.error(f"Erro ao carregar cliente: {st.session_state.get('k_client')}")
+        elif st.session_state.get("form_load_status") and st.session_state.get("form_load_status") == False:
+            st.error(f"Erro ao carregar cliente: {st.session_state.get(State_Keys_Map.CLIENT)}. Cliente não encontrado na base de dados.")
 
     

@@ -14,7 +14,7 @@ from docx.oxml.ns import qn
 from docx.oxml.shared import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from googleapiclient.http import MediaIoBaseDownload
-from services.utils import get_column_index_from_diagnosis_db, Diagnosis_Headers, RANGE_PLANILHA_WIDTH
+from services.utils import get_sheet_column_index, Headers_Map, State_Keys_Map, SHEETS_RANGE_WIDTH
 
 # Escopos de acesso necessários (Sheets, Docs e Drive)
 SCOPES = [
@@ -47,10 +47,10 @@ def authenticate_google():
     
     return None, auth_url
 
-def save_auth_token(codigo):
+def save_auth_token(code):
     """Pega o código que o Google devolve na URL e transforma no token.json."""
     flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    flow.fetch_token(code=codigo)
+    flow.fetch_token(code=code)
     creds = flow.credentials
     with open('token.json', 'w') as token:
         token.write(creds.to_json())
@@ -95,7 +95,7 @@ def upload_image_to_drive(drive_service, file_stream, filename, folder_id=None):
     # Retorna o ID do arquivo e o link para visualização
     return file_id, file.get('webViewLink')
 
-def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_nome):
+def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, client):
     """
     Verifica se o cliente já existe.
     Retorna a linha onde ele está, o ID da pasta, o ID do doc, e os dados completos da linha (row).
@@ -104,27 +104,27 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, cliente_n
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
     values = result.get('values', [])
     for i, row in enumerate(values):
-        if len(row) > 0 and row[0].lower() == cliente_nome.lower():
-            while len(row) < RANGE_PLANILHA_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
+        if len(row) > 0 and row[0].lower() == client.lower():
+            while len(row) < SHEETS_RANGE_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
                 row.append("")
-            folder_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DRIVE_ID)]
-            diagnosis_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.DIAGNOSIS_DOC_ID)]
-            roadmap_doc_id = row[get_column_index_from_diagnosis_db(Diagnosis_Headers.ROADMAP_DOC_ID)]
+            folder_id = row[get_sheet_column_index(Headers_Map.DRIVE_ID)]
+            diagnosis_doc_id = row[get_sheet_column_index(Headers_Map.DIAGNOSIS_DOC_ID)]
+            roadmap_doc_id = row[get_sheet_column_index(Headers_Map.ROADMAP_DOC_ID)]
             return i + 1, folder_id, diagnosis_doc_id, roadmap_doc_id, row 
             
     # ADICIONADO UM NONE EXTRA AQUI PARA QUANDO NÃO ACHAR NADA:
     return -1, None, None, None, None
 
-def save_to_sheets(sheets_service, spreadsheet_id, range_name, linha_encontrada, dados_linha):
+def save_to_sheets(sheets_service, spreadsheet_id, range_name, existing_row, row_data):
     """Salva os dados (Atualiza se a linha existir, ou adiciona uma nova)."""
     sheet = sheets_service.spreadsheets()
-    body = {'values': [dados_linha]}
+    body = {'values': [row_data]}
     
-    if linha_encontrada != -1:
+    if existing_row != -1:
         # ATUALIZA a linha existente
         # Extrai apenas a letra da coluna do range_name (ex: de 'Página1!A:Z' extrai 'A')
         coluna_inicial = range_name.split('!')[1].split(':')[0] if '!' in range_name else 'A'
-        update_range = f"{range_name.split('!')[0]}!{coluna_inicial}{linha_encontrada}"
+        update_range = f"{range_name.split('!')[0]}!{coluna_inicial}{existing_row}"
         
         sheet.values().update(
             spreadsheetId=spreadsheet_id, range=update_range,
@@ -268,7 +268,7 @@ def add_doc_template(doc):
     except Exception as e:
         print(f"Aviso: Não foi possível adicionar as imagens do rodapé: {e}")
 
-def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, folder_id, doc_id):
+def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_id, doc_id):
     """Cria/Atualiza o Google Docs estruturado usando python-docx, embutindo imagens nativamente."""
 
     def add_images(section, raw_images):      
@@ -290,7 +290,7 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
     add_doc_template(doc)
     
     # --- INTRODUÇÃO DO DOCUMENTO ---
-    doc.add_heading(f"[DS30] Diagnóstico Técnico - {cliente_nome}", level=1)
+    doc.add_heading(f"[DS30] Diagnóstico Técnico - {client}", level=1)
 
     doc.add_heading('Introdução', level=2)
     doc.add_paragraph('O projeto DS30, desenvolvido em parceria com o Google, visa a implementação e validação de soluções avançadas de Marketing Analytics. O foco central é o aprimoramento da mensuração e a otimização de dados por meio dos seguintes recursos:')
@@ -311,42 +311,42 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
 
     # Lógica do GTG (Mantendo exatamente a mesma estrutura)
     gtg_diagnosis_content = []
-    gtg_diagnosis_content.append("Possui o Google Tag Gateway implementado;" if dados_formulario.get("gtg_implementado") == "Sim" else "Não possui o Google Tag Gateway implementado ou não informou;")
-    gtg_diagnosis_content.append(f"Utiliza a CDN {dados_formulario.get('cdn')};" if dados_formulario.get("cdn") else "Cliente não utiliza ou não informou a CDN;")
-    gtg_diagnosis_content.append("Utiliza IaC;" if dados_formulario.get("iac") == "Sim" else "Não utiliza IaC ou não informou;")
-    gtg_diagnosis_content.append("Não utiliza TMS;" if dados_formulario.get('usa_tms') != 'Sim' else (f'Utiliza TMS: {dados_formulario.get("tms_type")};' if dados_formulario.get('tms_type') != 'Selecione' else 'Utiliza TMS, mas não informou qual;'))
+    gtg_diagnosis_content.append("Possui o Google Tag Gateway implementado;" if diagnosis_data.get(State_Keys_Map.GTG_IMPLEMENTED) == "Sim" else "Não possui o Google Tag Gateway implementado ou não informou;")
+    gtg_diagnosis_content.append(f"Utiliza a CDN {diagnosis_data.get(State_Keys_Map.CDN)};" if diagnosis_data.get(State_Keys_Map.CDN) else "Cliente não utiliza ou não informou a CDN;")
+    gtg_diagnosis_content.append("Utiliza IaC;" if diagnosis_data.get(State_Keys_Map.USE_IAC) == "Sim" else "Não utiliza IaC ou não informou;")
+    gtg_diagnosis_content.append("Não utiliza TMS;" if diagnosis_data.get(State_Keys_Map.USE_TMS) != 'Sim' else (f'Utiliza TMS: {diagnosis_data.get(State_Keys_Map.TMS_TYPE)};' if diagnosis_data.get(State_Keys_Map.TMS_TYPE) != 'Selecione' else 'Utiliza TMS, mas não informou qual;'))
     
-    if dados_formulario.get("tms_type") == "Google Tag Manager":
-        gtg_diagnosis_content.append(f"IDs do GTM Client-Side: {dados_formulario.get('gtm_cs_ids', 'Não informado')};")
-        gtg_diagnosis_content.append("Não utiliza GTM Server-Side;" if dados_formulario.get('gtm_ss') != 'Sim' else (f"Utiliza GTM Server-Side, provisionado no servidor {dados_formulario.get('gtm_ss_server')};" if dados_formulario.get('gtm_ss_server') else "Utiliza GTM Server-Side, mas não informou onde está provisionado;"))
+    if diagnosis_data.get(State_Keys_Map.TMS_TYPE) == "Google Tag Manager":
+        gtg_diagnosis_content.append(f"IDs do GTM Client-Side: {diagnosis_data.get(State_Keys_Map.GTM_CS_IDS, 'Não informado')};")
+        gtg_diagnosis_content.append("Não utiliza GTM Server-Side;" if diagnosis_data.get(State_Keys_Map.USE_GTM_SS) != 'Sim' else (f"Utiliza GTM Server-Side, provisionado no servidor {diagnosis_data.get(State_Keys_Map.GTM_SS_SERVER)};" if diagnosis_data.get(State_Keys_Map.GTM_SS_SERVER) else "Utiliza GTM Server-Side, mas não informou onde está provisionado;"))
         
-    gtg_diagnosis_content.append(f"O cliente {'não ' if dados_formulario.get('novos_caminhos') != 'Sim' else ''}autorizou a criação de novos caminhos no domínio principal para a implementação do GTG.")
+    gtg_diagnosis_content.append(f"O cliente {'não ' if diagnosis_data.get(State_Keys_Map.AUTH_NEW_DOMAIN_PATH) != 'Sim' else ''}autorizou a criação de novos caminhos no domínio principal para a implementação do GTG.")
 
     for item in gtg_diagnosis_content:
         doc.add_paragraph(item, style='List Bullet')
     
-    if dados_formulario.get('gtg_implementado') == 'Não':
+    if diagnosis_data.get(State_Keys_Map.GTG_IMPLEMENTED) == 'Não':
         doc.add_heading("Considerações finais sobre o GTG", level=3)
-        if dados_formulario.get('gtg_possible_config') == "Sim":
+        if diagnosis_data.get(State_Keys_Map.GTG_POSSIBLE_CONFIG) == "Sim":
             doc.add_paragraph(f"Foi possível concluir que será possível implementar o Google Tag Gateway no ambiente do cliente.")
-            if dados_formulario.get('gtg_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GTG_BLOCKS):
                 doc.add_paragraph("Porém, foram identificados os seguintes bloqueios para a implementação do GTG:")
-                doc.add_paragraph(dados_formulario.get('gtg_blocks'))
-        elif dados_formulario.get('gtg_possible_config') == "Não":
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GTG_BLOCKS))
+        elif diagnosis_data.get(State_Keys_Map.GTG_POSSIBLE_CONFIG) == "Não":
             doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível implementar o Google Tag Gateway no ambiente do cliente.")
-            if dados_formulario.get('gtg_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GTG_BLOCKS):
                 doc.add_paragraph("Os bloqueios identificados para a implementação do GTG foram:")
-                doc.add_paragraph(dados_formulario.get('gtg_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GTG_BLOCKS))
         else:
-            if dados_formulario.get('gtg_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GTG_BLOCKS):
                 doc.add_paragraph(f"Não foi possível concluir se será possível implementar o Google Tag Gateway no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(dados_formulario.get('gtg_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GTG_BLOCKS))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível implementar o Google Tag Gateway no ambiente do cliente.")
 
-    if dados_formulario.get('obs_gtg'):
+    if diagnosis_data.get(State_Keys_Map.GTG_PS):
         doc.add_heading("Observações - Google Tag Gateway", level=3)
-        doc.add_paragraph(dados_formulario.get('obs_gtg'))
+        doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GTG_PS))
 
     # --- SEÇÃO ENVIO DE SINAIS UPD ---
 
@@ -356,7 +356,7 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
     doc.add_paragraph('Nesta etapa, é necessário identificar se o cliente já possui algum tipo de implementação de UPD, seja por meio de hardcode ou por meio de ferramentas de Gerenciamento de Tags, e quais dados estão sendo enviados atualmente.')
     doc.add_paragraph('Além disso, é importante identificar oportunidades de implementação de UPD em formulários de contato, checkouts, ou outras interações relevantes no site.')
     doc.add_heading('Diagnóstico', level=3)
-    doc.add_paragraph(f"{'Com a análise do arquivo JSON do container GTM, foi possível fazer as seguintes verificações:' if dados_formulario.get('gtm_analise') else 'Não foi possível realizar a análise do container GTM, pois o cliente não forneceu o arquivo JSON exportado do container GTM Client-Side ou o cliente não utiliza GTM.'}")
+    doc.add_paragraph(f"{'Com a análise do arquivo JSON do container GTM, foi possível fazer as seguintes verificações:' if diagnosis_data.get(State_Keys_Map.GTM_ANALYSIS) else 'Não foi possível realizar a análise do container GTM, pois o cliente não forneceu o arquivo JSON exportado do container GTM Client-Side ou o cliente não utiliza GTM.'}")
 
     # Função auxiliar para criar tabelas estilizadas (Cabeçalho com fundo cinza escuro, letra branca e negrito)
     def add_styled_table(titulo, headers, data_rows):
@@ -382,21 +382,21 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
                 row_cells[i].text = str(cell_data)
         doc.add_paragraph() # Dá um Enter abaixo da tabela
 
-    if dados_formulario.get('gtm_analise'):
+    if diagnosis_data.get(State_Keys_Map.GTM_ANALYSIS):
         upd_var_table_data = []
         target_tag_table_data = []
-        for var in dados_formulario.get('gtm_analise').get('upd_variables', {}).values():
+        for var in diagnosis_data.get(State_Keys_Map.GTM_ANALYSIS).get('upd_variables', {}).values():
             upd_var_table_data.append([var['var_name'], var['method']])
-        for tag in dados_formulario.get('gtm_analise').get('target_tags', {}).values():
+        for tag in diagnosis_data.get(State_Keys_Map.GTM_ANALYSIS).get('target_tags', {}).values():
             target_tag_table_data.append([tag['tag_name'], tag['type'], "⏸️ Sim" if tag['paused'] else "▶️ Não", tag['setting_status'], tag['var_name']])
         doc.add_heading("Análise do Container GTM", level=4)
         add_styled_table("Variáveis UPD Encontradas", ["Nome da Variável UPD", "Método"], upd_var_table_data)
         add_styled_table("Tags Relevantes Configuração UPD", ["Nome da Tag", "Tipo", "Pausada", "Status", "Variável UPD"], target_tag_table_data)
 
-    if dados_formulario.get('urls_forms'):
+    if diagnosis_data.get(State_Keys_Map.FORM_URLS):
         doc.add_heading("Análise do site", level=4)
         doc.add_paragraph("Foi possível identificar as seguintes URLs de formulários relevantes para implementação de UPD:")
-        for url in dados_formulario.get('urls_forms').split("\n"):
+        for url in diagnosis_data.get(State_Keys_Map.FORM_URLS):
             doc.add_paragraph(url, style='List Bullet')
 
     # Função auxiliar para adicionar subseções de cada plataforma (GA, EC, ECL) mantendo a mesma estrutura e formatação
@@ -408,96 +408,96 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
 
     # --- SUBSEÇÃO GA UPD ---
     doc.add_heading("Google Analytics UPD", level=4)
-    if dados_formulario.get('ga_hardcoded'):
+    if diagnosis_data.get(State_Keys_Map.GA_HARDCODED):
         doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Google Analytics.", style='List Bullet')
-    add_images("Envio de Sinais - Google Analytics", dados_formulario.get('raw_img_ga4'))
-    if dados_formulario.get('ga_platform') == 'Não' and dados_formulario.get('ga_hardcoded') == 'Não':
+    add_images("Envio de Sinais - Google Analytics", diagnosis_data.get(State_Keys_Map.GA_IMG_RAW))
+    if diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Não' and diagnosis_data.get(State_Keys_Map.GA_HARDCODED) == 'Não':
         doc.add_heading("Considerações finais sobre o GA UPD", level=5)
-        if dados_formulario.get('ga_upd_possible_config') == "Sim":
+        if diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Sim":
             doc.add_paragraph(f"Foi possível concluir que será possível configurar o GA UPD no ambiente do cliente.")
-            if dados_formulario.get('ga_upd_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
                 doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(dados_formulario.get('ga_upd_blocks'))
-        elif dados_formulario.get('ga_upd_possible_config') == "Não":
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
+        elif diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Não":
             doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o GA UPD no ambiente do cliente.")
-            if dados_formulario.get('ga_upd_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
                 doc.add_paragraph("Os bloqueios identificados para a configuração do GA UPD foram:")
-                doc.add_paragraph(dados_formulario.get('ga_upd_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
         else:
-            if dados_formulario.get('ga_upd_blocks'):
+            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(dados_formulario.get('ga_upd_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente.")
-    elif dados_formulario.get('ga_platform') == 'Sim':
+    elif diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Sim':
         doc.add_paragraph('A configuração na interface do GA foi executada corretamente.', style="List Bullet")
 
     
     # --- SUBSEÇÃO EC ---
     doc.add_heading("Enhanced Conversions", level=4)
-    if dados_formulario.get('ec_hardcoded'):
+    if diagnosis_data.get(State_Keys_Map.EC_HARDCODED):
         doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions.", style='List Bullet')
-    if len(dados_formulario.get('ec_platforms', [])) > 0:
-        for ec_platform in dados_formulario.get('ec_platforms', []):
+    if len(diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, [])) > 0:
+        for ec_platform in diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, []):
             platform = ec_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
             platform_status = "Sim" if "Sim" in ec_platform else "Não" if "Não" in ec_platform else None
             add_subsection(platform, platform_status)
     else:
         doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions.", style='List Bullet')
-    add_images("Envio de Sinais - Enhanced Conversions", dados_formulario.get('raw_img_ec'))
-    if "Não" in ", ".join(dados_formulario.get('ec_platforms', [])) and dados_formulario.get('ec_hardcoded') == 'Não':
+    add_images("Envio de Sinais - Enhanced Conversions", diagnosis_data.get(State_Keys_Map.EC_IMG_RAW))
+    if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, [])) and diagnosis_data.get(State_Keys_Map.EC_HARDCODED) == 'Não':
         doc.add_heading("Considerações finais sobre o EC", level=5)
-        if dados_formulario.get('ec_possible_config') == "Sim":
+        if diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Sim":
             doc.add_paragraph(f"Foi possível concluir que será possível configurar o EC no ambiente do cliente.")
-            if dados_formulario.get('ec_blocks'):
+            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
                 doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(dados_formulario.get('ec_blocks'))
-        elif dados_formulario.get('ec_possible_config') == "Não":
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
+        elif diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Não":
             doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o EC no ambiente do cliente.")
-            if dados_formulario.get('ec_blocks'):
+            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
                 doc.add_paragraph("Os bloqueios identificados para a configuração do EC foram:")
-                doc.add_paragraph(dados_formulario.get('ec_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
         else:
-            if dados_formulario.get('ec_blocks'):
+            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(dados_formulario.get('ec_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente.")
 
     # --- SUBSEÇÃO ECL ---
     doc.add_heading("Enhanced Conversions for Leads", level=4)
-    if dados_formulario.get('ecl_hardcoded'):
+    if diagnosis_data.get(State_Keys_Map.ECL_HARDCODED):
         doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions for Leads.", style='List Bullet')
-    if len(dados_formulario.get('ecl_platforms', [])) > 0:
-        for ecl_platform in dados_formulario.get('ecl_platforms', []):
+    if len(diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, [])) > 0:
+        for ecl_platform in diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, []):
             platform = ecl_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
             platform_status = "Sim" if "Sim" in ecl_platform else "Não" if "Não" in ecl_platform else None
             add_subsection(platform, platform_status)
     else:
         doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions for Leads.", style='List Bullet')
-    add_images("Envio de Sinais - Enhanced Conversions for Leads", dados_formulario.get('raw_img_ecl'))
-    if "Não" in ", ".join(dados_formulario.get('ecl_platforms', [])) and dados_formulario.get('ecl_hardcoded') == 'Não':
+    add_images("Envio de Sinais - Enhanced Conversions for Leads", diagnosis_data.get(State_Keys_Map.ECL_IMG_RAW))
+    if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, [])) and diagnosis_data.get(State_Keys_Map.ECL_HARDCODED) == 'Não':
         doc.add_heading("Considerações finais sobre o ECL", level=5)
-        if dados_formulario.get('ecl_possible_config') == "Sim":
+        if diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Sim":
             doc.add_paragraph(f"Foi possível concluir que será possível configurar o ECL no ambiente do cliente.")
-            if dados_formulario.get('ecl_blocks'):
+            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
                 doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(dados_formulario.get('ecl_blocks'))
-        elif dados_formulario.get('ecl_possible_config') == "Não":
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
+        elif diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Não":
             doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o ECL no ambiente do cliente.")
-            if dados_formulario.get('ecl_blocks'):
+            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
                 doc.add_paragraph("Os bloqueios identificados para a configuração do ECL foram:")
-                doc.add_paragraph(dados_formulario.get('ecl_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
         else:
-            if dados_formulario.get('ecl_blocks'):
+            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(dados_formulario.get('ecl_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente.")
 
-    if dados_formulario.get('obs_upd'):
+    if diagnosis_data.get(State_Keys_Map.UPD_PS):
         doc.add_heading("Observações - Envio de Sinais UPD", level=3)
-        doc.add_paragraph(dados_formulario.get('obs_upd'))
+        doc.add_paragraph(diagnosis_data.get(State_Keys_Map.UPD_PS))
 
     # --- SEÇÃO OFFLINE CONVERSIONS INTEGRATION (OCI) ---
     doc.add_heading("Offline Conversions Integration (OCI)", level=2)
@@ -505,35 +505,35 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
     doc.add_paragraph("Isso é crucial para obter uma visão completa do desempenho das campanhas e otimizar as estratégias de marketing com base em dados mais abrangentes.")
     doc.add_paragraph("O diagnóstico nesta seção consiste em verificar se o cliente já possui alguma implementação de OCI, entender o método de integração utilizado (ex: API, upload manual, etc.), e quais informações estão sendo integradas atualmente.")
     doc.add_heading('Diagnóstico', level=3)
-    oci_implementado = dados_formulario.get('oci_implementado')
+    oci_implementado = diagnosis_data.get(State_Keys_Map.OCI_IMPLEMENTED)
     doc.add_paragraph(f"O cliente {'possui' if oci_implementado == 'Sim' else 'não possui' if oci_implementado == 'Não' else 'não informou'} integração de Offline Conversions (OCI) implementada.", style='List Bullet')
-    if oci_implementado == "Sim" and dados_formulario.get('oci_metodo'):
-            doc.add_paragraph(f"A integração de conversões offline é feita via {dados_formulario.get('oci_metodo')}.", style='List Bullet')
-    if oci_implementado == "Sim" and dados_formulario.get('oci_infos'):
-            dados = dados_formulario.get('oci_infos').split("\n") if isinstance(dados_formulario.get('oci_infos'), str) else dados_formulario.get('oci_infos')
+    if oci_implementado == "Sim" and diagnosis_data.get(State_Keys_Map.OCI_METHOD):
+            doc.add_paragraph(f"A integração de conversões offline é feita via {diagnosis_data.get(State_Keys_Map.OCI_METHOD)}.", style='List Bullet')
+    if oci_implementado == "Sim" and diagnosis_data.get(State_Keys_Map.OCI_INFOS):
+            dados = diagnosis_data.get(State_Keys_Map.OCI_INFOS).split("\n") if isinstance(diagnosis_data.get(State_Keys_Map.OCI_INFOS), str) else diagnosis_data.get(State_Keys_Map.OCI_INFOS)
             doc.add_paragraph(f"As seguintes informações estão sendo integradas atualmente:", style='List Bullet')
             for dado in dados:
                 doc.add_paragraph(dado, style='List Bullet 2')
-    add_images("Offline Conversions Integration (OCI)", dados_formulario.get('raw_img_oci'))
-    if dados_formulario.get('obs_oci'):
+    add_images("Offline Conversions Integration (OCI)", diagnosis_data.get(State_Keys_Map.OCI_IMG_RAW))
+    if diagnosis_data.get(State_Keys_Map.OCI_PS):
         doc.add_heading("Observações - Offline Conversion Integration (OCI)", level=3)
-        doc.add_paragraph(dados_formulario.get('oci_obs'))
-    if dados_formulario.get('oci_implementado') == "Não":
+        doc.add_paragraph(diagnosis_data.get(State_Keys_Map.OCI_PS))
+    if diagnosis_data.get(State_Keys_Map.OCI_IMPLEMENTED) == "Não":
         doc.add_heading("Considerações finais sobre o OCI", level=5)
-        if dados_formulario.get('oci_possible_config') == "Sim":
+        if diagnosis_data.get(State_Keys_Map.OCI_POSSIBLE_CONFIG) == "Sim":
             doc.add_paragraph(f"Foi possível concluir que será possível configurar o OCI no ambiente do cliente.")
-            if dados_formulario.get('oci_blocks'):
+            if diagnosis_data.get(State_Keys_Map.OCI_BLOCKS):
                 doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(dados_formulario.get('oci_blocks'))
-        elif dados_formulario.get('oci_possible_config') == "Não":
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.OCI_BLOCKS))
+        elif diagnosis_data.get(State_Keys_Map.OCI_POSSIBLE_CONFIG) == "Não":
             doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o OCI no ambiente do cliente.")
-            if dados_formulario.get('oci_blocks'):
+            if diagnosis_data.get(State_Keys_Map.OCI_BLOCKS):
                 doc.add_paragraph("Os bloqueios identificados para a configuração do OCI foram:")
-                doc.add_paragraph(dados_formulario.get('oci_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.OCI_BLOCKS))
         else:
-            if dados_formulario.get('oci_blocks'):
+            if diagnosis_data.get(State_Keys_Map.OCI_BLOCKS):
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o OCI no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(dados_formulario.get('oci_blocks'))
+                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.OCI_BLOCKS))
             else:
                 doc.add_paragraph(f"Não foi possível concluir se será possível configurar o OCI no ambiente do cliente.")
 
@@ -559,7 +559,7 @@ def create_update_diagnostic_doc(drive_service, cliente_nome, dados_formulario, 
     else:
         # Cria um ficheiro novo na pasta
         file_metadata = {
-            'name': f'[DS30] Diagnóstico Técnico - {cliente_nome}',
+            'name': f'[DS30] Diagnóstico Técnico - {client}',
             'parents': [folder_id],
             'mimeType': 'application/vnd.google-apps.document'
         }
