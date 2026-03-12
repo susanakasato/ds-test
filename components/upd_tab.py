@@ -147,7 +147,7 @@ def render_upd_tab():
             except Exception as e:
                 st.error(f"Erro ao ler ou analisar o arquivo JSON: {e}")
     st.text_area("Liste as URLs onde há a presença de formulários possíveis de coleta de dados UPD:", key=State_Keys_Map.FORM_URLS.value)
-    st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.UPD_IMG_FORM.value)
+    st.session_state[State_Keys_Map.UPD_IMG_FORM.value] = st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     show_existing_images(State_Keys_Map.UPD_IMG_LINKS.value, "UPD")
     st.text_area("Observações (Envio de Sinais UPD)", key=State_Keys_Map.UPD_PS.value)
     st.divider()
@@ -158,7 +158,7 @@ def render_upd_tab():
         st.radio("A coleta de dados fornecidos pelo usuário foi ativada na interface do GA4?", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_UPD_CONFIG.value)
         if State_Keys_Map.GA_UPD_CONFIG.st_state == "Não" or State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
             st.radio("A implementação foi feita corretamente via hard coded? (GA)", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_HARDCODED.value)
-        st.file_uploader("Upload de imagens de validação (GA)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.GA_IMG_FORM.value)
+        st.session_state[State_Keys_Map.GA_IMG_FORM.value] = st.file_uploader("Upload de imagens de validação (GA)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
         show_existing_images(State_Keys_Map.GA_IMG_LINKS.value, "GA4 UPD") # Painel para mostrar imagens já existentes no Sheets para GA4 UPD
         if State_Keys_Map.GA_UPD_CONFIG.st_state == "Não" and State_Keys_Map.GA_HARDCODED.st_state == "Não":
             st.radio("À princípio, é possível configurar o GA UPD?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.GA_UPD_POSSIBLE_CONFIG.value)
@@ -167,10 +167,9 @@ def render_upd_tab():
 
     # --- Subseção: Enhanced Conversions ---
     st.subheader("🎯 Enhanced Conversions")
-    ec_platforms = st.multiselect(
-        "Quais plataformas o cliente utiliza que poderiam configurar o EC?",
-        ["Google Ads", "Search Ads 360", "Campaign Manager 360"]
-    )
+    ec_platforms = State_Keys_Map.GENERAL_PLATFORMS.st_state if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
+    if 'Google Analytics' in ec_platforms:
+        ec_platforms.remove('Google Analytics')
     formatted_ec_platforms = []
     status_need_ec_config = False
     if len(ec_platforms) > 0:
@@ -182,10 +181,10 @@ def render_upd_tab():
             if status_ec == "Não":
                 status_need_ec_config = True
             formatted_ec_platforms.append(f"{plat} ({status_texto})")
-    st.session_state[State_Keys_Map.EC_PLATFORMS.value] = formatted_ec_platforms
+    st.session_state[State_Keys_Map.EC_PLATFORM_CONFIG.value] = formatted_ec_platforms
     if State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
         st.radio("A implementação foi feita corretamente via hard coded? (EC)", ("Sim", "Não"), index=None, key=State_Keys_Map.EC_HARDCODED.value)
-    st.file_uploader("Upload de imagens de validação (EC)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.EC_IMG_FORM.value)
+    st.session_state[State_Keys_Map.EC_IMG_FORM.value] = st.file_uploader("Upload de imagens de validação (EC)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     show_existing_images(State_Keys_Map.EC_IMG_LINKS.value, "EC")
     if status_need_ec_config:
         st.radio("À princípio, é possível configurar o EC?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.EC_POSSIBLE_CONFIG.value)
@@ -194,10 +193,9 @@ def render_upd_tab():
 
     # --- Subseção: Enhanced Conversions for Leads ---
     st.subheader("🧲 Enhanced Conversions for Leads")
-    ecl_platforms = st.multiselect(
-        "Quais plataformas o cliente utiliza que poderiam configurar o ECL?",
-        ["Google Ads", "Search Ads 360", "Campaign Manager 360"]
-    )
+    ecl_platforms = State_Keys_Map.GENERAL_PLATFORMS.st_state if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
+    if 'Google Analytics' in ecl_platforms:
+        ecl_platforms.remove('Google Analytics')
     formatted_ecl_platforms = []
     status_need_ecl_config = False
     if len(ecl_platforms) > 0:
@@ -209,10 +207,10 @@ def render_upd_tab():
             if status_ecl == "Não":
                 status_need_ecl_config = True
             formatted_ecl_platforms.append(f"{plat} ({status_texto})")
-    st.session_state[State_Keys_Map.ECL_PLATFORMS.value] = formatted_ecl_platforms
+    st.session_state[State_Keys_Map.ECL_PLATFORM_CONFIG.value] = formatted_ecl_platforms
     if State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
         st.radio("A implementação foi feita corretamente via hard coded? (ECL)", ("Sim", "Não"), index=None, key=State_Keys_Map.ECL_HARDCODED.value)
-    st.file_uploader("Upload de imagens de validação (ECL)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.ECL_IMG_FORM.value)
+    st.session_state[State_Keys_Map.ECL_IMG_FORM.value] = st.file_uploader("Upload de imagens de validação (ECL)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     show_existing_images(State_Keys_Map.ECL_IMG_LINKS.value, "ECL") # Painel para mostrar imagens já existentes no Sheets para ECL
     if status_need_ecl_config:
         st.radio("À princípio, é possível configurar o ECL?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.ECL_POSSIBLE_CONFIG.value)

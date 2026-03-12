@@ -4,7 +4,7 @@ from components.gtg_tab import render_gtg_tab
 from components.upd_tab import render_upd_tab
 from components.oci_tab import render_oci_tab
 from services.google_api import check_client_in_sheets, create_drive_folder, create_update_diagnostic_doc, download_image_from_drive, get_services, save_to_sheets, upload_image_to_drive
-from services.utils import PARENT_FOLDER_ID, SHEETS_ID, SHEETS_RANGE, SHEETS_RANGE_WIDTH, Headers_Map, State_Keys_Map, format_list, get_sheet_column_index, update_client_list
+from services.utils import PARENT_FOLDER_ID, SHEETS_ID, SHEETS_RANGE, SHEETS_RANGE_WIDTH, Headers_Map, State_Keys_Map, get_sheet_column_index, update_client_list
 
 def process_or_get_images(new_files_list, section_name, existing_links):
     _, _, drive_service = get_services()
@@ -56,6 +56,8 @@ def render_diagnosis_tab():
     with oci_tab:
         render_oci_tab()
 
+    print("renderizando botão de salvar..." + State_Keys_Map.CLIENT.st_state)
+
     st.divider()
     if st.button("💾 Salvar e Gerar Documento de Diagnóstico", type="primary", use_container_width=True):
         if not State_Keys_Map.CLIENT.st_state:
@@ -103,7 +105,7 @@ def render_diagnosis_tab():
 
                     sheets_data = [None] * SHEETS_RANGE_WIDTH
                     for key in Headers_Map:
-                        sheets_data[get_sheet_column_index(key)] = format_list(key.state_key.st_state)
+                        sheets_data[get_sheet_column_index(key)] = key.state_key.st_state_formatted
                     sheets_data[Headers_Map.DIAGNOSIS_DOC_ID.column_index] = diagnosis_doc_id
                     sheets_data[Headers_Map.DRIVE_ID.column_index] = client_folder_id
 

@@ -2,16 +2,17 @@ from enum import Enum
 import streamlit as st # pyright: ignore[reportMissingImports]
 
 SHEETS_ID = '1D7TLq7-ThUj5WyUn1Ys3X05jKilDDmYjpLSxngK6ij4'
-SHEETS_RANGE = 'DB Diagnóstico!A:AT'
+SHEETS_RANGE = 'DB Diagnóstico!A:AY'
 SHEETS_RANGE_CLIENT = 'DB Diagnóstico!A2:A'
-SHEETS_RANGE_WIDTH = 46
+SHEETS_RANGE_WIDTH = 51
 PARENT_FOLDER_ID = '12ZTADl3NujM3fNhYTHG3C7cYNPPpFaN8'
 
-def show_existing_images(key_state, section_name):
+def show_existing_images(key_state_value, section_name):
     """Cria um painel expansível mostrando quantas imagens já existem e os seus links."""
-    links = st.session_state.get(key_state, "")
+    links = st.session_state.get(key_state_value, "")
     if links:
-        lista_links = [l.strip() for l in links.split("\n") if l.strip()]
+        # lista_links = [l.strip() for l in links.split("\n") if l.strip()]
+        lista_links = links
         qtd = len(lista_links)
         if qtd > 0:
             with st.expander(f"✅ {qtd} imagem(ns) já salva(s) para {section_name}", expanded=False):
@@ -56,6 +57,9 @@ class Headers_Map(Enum):
     GTG_BLOCKS = 'Possíveis bloqueios para a implementação do GTG'
 
     GENERAL_PLATFORMS = 'Quais ferramentas Google o cliente utiliza?'
+    GA_IDS = 'GA - ID de Mensuração'
+    GADS_IDS = 'Google Ads - ID de Mensuração'
+    FLOODLIGHT_IDS = 'Floodlight - ID do Anunciante'
 
     GTM_ANALYSIS = 'Análise do json do GTM'
     FORM_URLS = 'URLS onde apresentam potenciais locais de coleta de dados UPD'
@@ -67,11 +71,13 @@ class Headers_Map(Enum):
     GA_UPD_POSSIBLE_CONFIG = 'À princípio, é possível configurar o GA UPD?'
     GA_UPD_BLOCKS = 'Possíveis bloqueios para a configuração do GA UPD'
 
+    EC_PLATFORM_CONFIG = 'O EC está configurado na plataforma?'
     EC_HARDCODED = 'O EC foi implementado via hardcoded (se for o caso) corretamente?'
     EC_IMG_LINKS = 'EC - Links de evidências'
     EC_POSSIBLE_CONFIG = 'À princípio, é possível configurar o EC?'
     EC_BLOCKS = 'Possíveis bloqueios para a configuração do EC'
 
+    ECL_PLATFORM_CONFIG = 'O ECL está configurado na plataforma?'
     ECL_HARDCODED = 'O ECL foi implementado via hardcoded (se for o caso) corretamente?'
     ECL_IMG_LINKS = 'ECL - Links de evidências'
     ECL_POSSIBLE_CONFIG = 'À princípio, é possível configurar o ECl?'
@@ -131,32 +137,37 @@ class State_Keys_Map(Enum):
     POSSIBLE_GTG = 'form_possible_gtg'
     GTG_BLOCKS = 'form_gtg_blocks'
 
-    GENERAL_PLATFORMS = 'form_general_platforms'
+    GENERAL_PLATFORMS = 'form_general_platforms_list'
+    GA_IDS = 'form_ga_ids'
+    GADS_IDS = 'form_gads_ids'
+    FLOODLIGHT_IDS = 'form_floodlight_ids'
 
     GTM_ANALYSIS = 'form_gtm_analysis'
     FORM_URLS = 'form_form_urls'
-    UPD_IMG_LINKS = 'form_upd_image_links'
+    UPD_IMG_LINKS = 'form_upd_image_links_list'
     UPD_IMG_FORM = 'form_upd_image_form'
     UPD_IMG_RAW = 'form_upd_image_raw'
     UPD_PS = 'form_upd_ps'
 
     GA_UPD_CONFIG = 'form_ga_config'
     GA_HARDCODED = 'form_ga_hardcoded'
-    GA_IMG_LINKS = 'form_ga_image_links'
+    GA_IMG_LINKS = 'form_ga_image_links_list'
     GA_IMG_FORM = 'form_ga_image_form'
     GA_IMG_RAW = 'form_ga_image_raw'
     GA_UPD_POSSIBLE_CONFIG = 'form_ga_upd_possible_config'
     GA_UPD_BLOCKS = 'form_ga_upd_blocks'
 
+    EC_PLATFORM_CONFIG = 'form_ec_platform_config'
     EC_HARDCODED = 'form_ec_hardcoded'
-    EC_IMG_LINKS = 'form_ec_image_links'
+    EC_IMG_LINKS = 'form_ec_image_links_list'
     EC_IMG_FORM = 'form_ec_image_form'
     EC_IMG_RAW = 'form_ec_image_raw'
     EC_POSSIBLE_CONFIG = 'form_ec_possible_config'
     EC_BLOCKS = 'form_ec_blocks'
 
+    ECL_PLATFORM_CONFIG = 'form_ecl_platform_config'
     ECL_HARDCODED = 'form_ecl_hardcoded'
-    ECL_IMG_LINKS = 'form_ecl_image_links'
+    ECL_IMG_LINKS = 'form_ecl_image_links_list'
     ECL_IMG_FORM = 'form_ecl_image_form'
     ECL_IMG_RAW = 'form_ecl_image_raw'
     ECL_POSSIBLE_CONFIG = 'form_ecl_possible_config'
@@ -165,8 +176,8 @@ class State_Keys_Map(Enum):
     OCI_IMPLEMENTED = 'form_oci_impl'
     OCI_PLATFORM = 'form_oci_platform'
     OCI_METHOD = 'form_oci_method'
-    OCI_INFOS = 'form_oci_infos'
-    OCI_IMG_LINKS = 'form_oci_img_links'
+    OCI_INFOS = 'form_oci_infos_list'
+    OCI_IMG_LINKS = 'form_oci_img_links_list'
     OCI_IMG_FORM = 'form_oci_image_form'
     OCI_IMG_RAW = 'form_oci_image_raw'
     OCI_POSSIBLE_CONFIG = 'form_oci_possible_config'
@@ -186,26 +197,47 @@ class State_Keys_Map(Enum):
     OCI_ROADMAP = 'form_oci_roadmap'
 
     @property
+    def st_state_formatted(self):
+        if 'list' in self.value and isinstance(st.session_state.get(self.value), list):
+            return '\n'.join(st.session_state.get(self.value))
+        return st.session_state.get(self.value, None)
+    
+    @property
     def st_state(self):
         return st.session_state.get(self.value, None)
 
+    @property
+    def header(self):
+        if self.name in Headers_Map.__members__:
+            return Headers_Map[self.name]
+        return None
+
 def get_platform_from_key(key):
     dict = {
+        "ga": "Google Analytics",
         "gads": "Google Ads",
         "sa": "Search Ads 360",
-        "cm": "Campaign Manager 360"
+        "cm": "Campaign Manager 360",
+        "dv": "Display & Video 360"
     }
     return dict.get(key, key)
 
 def get_key_from_platform(platform):
     dict = {
+        "Google Analytics": "ga",
         "Google Ads": "gads",
         "Search Ads 360": "sa",
-        "Campaign Manager 360": "cm"
+        "Campaign Manager 360": "cm",
+        "Display & Video 360": "dv"
     }
     return dict.get(platform, platform)
 
-def format_list(item):
-    if isinstance(item, list):
-        return "\n".join(item)
-    return str(item) if item else ""
+
+def sheet_to_state(row, state_key_enum):
+    if state_key_enum.header is None:
+        return None
+    if 'list' in state_key_enum.value:
+        data = row[state_key_enum.header.column_index].split("\n")
+    else:
+        data = row[state_key_enum.header.column_index]
+    return data

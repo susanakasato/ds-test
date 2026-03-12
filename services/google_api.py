@@ -104,7 +104,7 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, client):
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
     values = result.get('values', [])
     for i, row in enumerate(values):
-        if len(row) > 0 and row[0].lower() == client.lower():
+        if len(row) > 0 and row[0] == client:
             while len(row) < SHEETS_RANGE_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
                 row.append("")
             folder_id = row[Headers_Map.DRIVE_ID.column_index]
