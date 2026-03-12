@@ -107,9 +107,9 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, client):
         if len(row) > 0 and row[0].lower() == client.lower():
             while len(row) < SHEETS_RANGE_WIDTH:  # Garante que a row tenha o número correto de colunas, preenchendo com vazios se necessário
                 row.append("")
-            folder_id = row[get_sheet_column_index(Headers_Map.DRIVE_ID)]
-            diagnosis_doc_id = row[get_sheet_column_index(Headers_Map.DIAGNOSIS_DOC_ID)]
-            roadmap_doc_id = row[get_sheet_column_index(Headers_Map.ROADMAP_DOC_ID)]
+            folder_id = row[Headers_Map.DRIVE_ID.column_index]
+            diagnosis_doc_id = row[Headers_Map.DIAGNOSIS_DOC_ID.column_index]
+            roadmap_doc_id = row[Headers_Map.ROADMAP_DOC_ID.column_index]
             return i + 1, folder_id, diagnosis_doc_id, roadmap_doc_id, row 
             
     # ADICIONADO UM NONE EXTRA AQUI PARA QUANDO NÃO ACHAR NADA:

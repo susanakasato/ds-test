@@ -9,8 +9,6 @@ def analyse_gtm_json(gtm_data):
     tags = container.get('tag', [])
     variables = container.get('variable', [])
     
-    # Usaremos um dicionário para guardar o mapeamento relacional
-    # Estrutura: { 'Nome da Var': {'metodo': '...', 'campos': [...], 'tags_que_usam': []} }
     upd_variables_dict = {}
     
     # --- 1. IDENTIFICAR VARIÁVEIS UPD ---
@@ -133,39 +131,39 @@ def render_gtm_analysis_table(gtm_analysis_result):
     st.table(tags_table)
 
 def render_upd_tab():
-    st.header("Envio de Sinais UPD")
     st.subheader("Análise geral de sinais UPD")
     if st.session_state.get('form_tms_type') == "Google Tag Manager":
         uploaded_file = st.file_uploader("Upload do GTM Container Export (JSON)", type="json")
-        if uploaded_file is not None or st.session_state.get(State_Keys_Map.GTM_ANALYSIS) is not None:
+        if uploaded_file is not None or State_Keys_Map.GTM_ANALYSIS.st_state is not None:
             try:
                 if uploaded_file is not None:
                     gtm_data = json.load(uploaded_file)
                     st.success("Arquivo carregado com sucesso!")
                     gtm_analysis_result = analyse_gtm_json(gtm_data)
-                elif st.session_state.get(State_Keys_Map.GTM_ANALYSIS):
-                    gtm_analysis_result = ast.literal_eval(st.session_state.get(State_Keys_Map.GTM_ANALYSIS))
+                elif State_Keys_Map.GTM_ANALYSIS.st_state:
+                    gtm_analysis_result = ast.literal_eval(State_Keys_Map.GTM_ANALYSIS.st_state)
                 render_gtm_analysis_table(gtm_analysis_result)
-                st.session_state[State_Keys_Map.GTM_ANALYSIS] = gtm_analysis_result
+                st.session_state[State_Keys_Map.GTM_ANALYSIS.value] = gtm_analysis_result
             except Exception as e:
                 st.error(f"Erro ao ler ou analisar o arquivo JSON: {e}")
-    st.text_area("Liste as URLs onde há a presença de formulários possíveis de coleta de dados UPD:", key=State_Keys_Map.FORM_URLS)
-    st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.UPD_IMG_FORM)
-    show_existing_images(State_Keys_Map.UPD_IMG_LINKS, "UPD")
-    st.text_area("Observações (Envio de Sinais UPD)", key=State_Keys_Map.UPD_PS)
+    st.text_area("Liste as URLs onde há a presença de formulários possíveis de coleta de dados UPD:", key=State_Keys_Map.FORM_URLS.value)
+    st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.UPD_IMG_FORM.value)
+    show_existing_images(State_Keys_Map.UPD_IMG_LINKS.value, "UPD")
+    st.text_area("Observações (Envio de Sinais UPD)", key=State_Keys_Map.UPD_PS.value)
     st.divider()
 
     # --- Subseção: Google Analytics ---
-    st.subheader("📈 Google Analytics")
-    st.radio("A coleta de dados fornecidos pelo usuário foi ativada na interface do GA4?", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_UPD_CONFIG)
-    if st.session_state.get(State_Keys_Map.GA_UPD_CONFIG) == "Não" or st.session_state.get(State_Keys_Map.TMS_TYPE) != "Google Tag Manager":
-        st.radio("A implementação foi feita corretamente via hard coded? (GA)", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_HARDCODED)
-    st.file_uploader("Upload de imagens de validação (GA)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.GA_IMG_FORM)
-    show_existing_images(State_Keys_Map.GA_IMG_LINKS, "GA4 UPD") # Painel para mostrar imagens já existentes no Sheets para GA4 UPD
-    if st.session_state[State_Keys_Map.GA_UPD_CONFIG] == "Não" and st.session_state[State_Keys_Map.GA_HARDCODED] == "Não":
-        st.radio("À princípio, é possível configurar o GA UPD?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.GA_UPD_POSSIBLE_CONFIG)
-        st.text_area("Quais seriam os possíveis bloqueios para a configuração do GA UPD?", key=State_Keys_Map.GA_UPD_BLOCKS)
-    st.divider()
+    if "Google Analytics" in State_Keys_Map.GENERAL_PLATFORMS.st_state:
+        st.subheader("📈 Google Analytics")
+        st.radio("A coleta de dados fornecidos pelo usuário foi ativada na interface do GA4?", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_UPD_CONFIG.value)
+        if State_Keys_Map.GA_UPD_CONFIG.st_state == "Não" or State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
+            st.radio("A implementação foi feita corretamente via hard coded? (GA)", ("Sim", "Não"), index=None, key=State_Keys_Map.GA_HARDCODED.value)
+        st.file_uploader("Upload de imagens de validação (GA)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.GA_IMG_FORM.value)
+        show_existing_images(State_Keys_Map.GA_IMG_LINKS.value, "GA4 UPD") # Painel para mostrar imagens já existentes no Sheets para GA4 UPD
+        if State_Keys_Map.GA_UPD_CONFIG.st_state == "Não" and State_Keys_Map.GA_HARDCODED.st_state == "Não":
+            st.radio("À princípio, é possível configurar o GA UPD?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.GA_UPD_POSSIBLE_CONFIG.value)
+            st.text_area("Quais seriam os possíveis bloqueios para a configuração do GA UPD?", key=State_Keys_Map.GA_UPD_BLOCKS.value)
+        st.divider()
 
     # --- Subseção: Enhanced Conversions ---
     st.subheader("🎯 Enhanced Conversions")
@@ -184,14 +182,14 @@ def render_upd_tab():
             if status_ec == "Não":
                 status_need_ec_config = True
             formatted_ec_platforms.append(f"{plat} ({status_texto})")
-    st.session_state[State_Keys_Map.EC_PLATFORMS] = formatted_ec_platforms
-    if st.session_state.get(State_Keys_Map.TMS_TYPE) != "Google Tag Manager":
-        st.radio("A implementação foi feita corretamente via hard coded? (EC)", ("Sim", "Não"), index=None, key=State_Keys_Map.EC_HARDCODED)
-    st.file_uploader("Upload de imagens de validação (EC)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.EC_IMG_FORM)
-    show_existing_images(State_Keys_Map.EC_IMG_LINKS, "EC")
+    st.session_state[State_Keys_Map.EC_PLATFORMS.value] = formatted_ec_platforms
+    if State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
+        st.radio("A implementação foi feita corretamente via hard coded? (EC)", ("Sim", "Não"), index=None, key=State_Keys_Map.EC_HARDCODED.value)
+    st.file_uploader("Upload de imagens de validação (EC)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.EC_IMG_FORM.value)
+    show_existing_images(State_Keys_Map.EC_IMG_LINKS.value, "EC")
     if status_need_ec_config:
-        st.radio("À princípio, é possível configurar o EC?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.EC_POSSIBLE_CONFIG)
-        st.text_area("Quais seriam os possíveis bloqueios para a configuração do EC?", key=State_Keys_Map.EC_BLOCKS)
+        st.radio("À princípio, é possível configurar o EC?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.EC_POSSIBLE_CONFIG.value)
+        st.text_area("Quais seriam os possíveis bloqueios para a configuração do EC?", key=State_Keys_Map.EC_BLOCKS.value)
     st.divider()
 
     # --- Subseção: Enhanced Conversions for Leads ---
@@ -211,11 +209,11 @@ def render_upd_tab():
             if status_ecl == "Não":
                 status_need_ecl_config = True
             formatted_ecl_platforms.append(f"{plat} ({status_texto})")
-    st.session_state[State_Keys_Map.ECL_PLATFORMS] = formatted_ecl_platforms
-    if st.session_state.get(State_Keys_Map.TMS_TYPE) != "Google Tag Manager":
-        st.radio("A implementação foi feita corretamente via hard coded? (ECL)", ("Sim", "Não"), index=None, key=State_Keys_Map.ECL_HARDCODED)
-    st.file_uploader("Upload de imagens de validação (ECL)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.ECL_IMG_FORM)
-    show_existing_images(State_Keys_Map.ECL_IMG_LINKS, "ECL") # Painel para mostrar imagens já existentes no Sheets para ECL
+    st.session_state[State_Keys_Map.ECL_PLATFORMS.value] = formatted_ecl_platforms
+    if State_Keys_Map.TMS_TYPE.st_state != "Google Tag Manager":
+        st.radio("A implementação foi feita corretamente via hard coded? (ECL)", ("Sim", "Não"), index=None, key=State_Keys_Map.ECL_HARDCODED.value)
+    st.file_uploader("Upload de imagens de validação (ECL)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=State_Keys_Map.ECL_IMG_FORM.value)
+    show_existing_images(State_Keys_Map.ECL_IMG_LINKS.value, "ECL") # Painel para mostrar imagens já existentes no Sheets para ECL
     if status_need_ecl_config:
-        st.radio("À princípio, é possível configurar o ECL?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.ECL_POSSIBLE_CONFIG)
-        st.text_area("Quais seriam os possíveis bloqueios para a configuração do ECL?", key=State_Keys_Map.ECL_BLOCKS)
+        st.radio("À princípio, é possível configurar o ECL?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.ECL_POSSIBLE_CONFIG.value)
+        st.text_area("Quais seriam os possíveis bloqueios para a configuração do ECL?", key=State_Keys_Map.ECL_BLOCKS.value)

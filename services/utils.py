@@ -2,9 +2,9 @@ from enum import Enum
 import streamlit as st # pyright: ignore[reportMissingImports]
 
 SHEETS_ID = '1D7TLq7-ThUj5WyUn1Ys3X05jKilDDmYjpLSxngK6ij4'
-SHEETS_RANGE = 'DB Diagnóstico!A:AU'
+SHEETS_RANGE = 'DB Diagnóstico!A:AT'
 SHEETS_RANGE_CLIENT = 'DB Diagnóstico!A2:A'
-SHEETS_RANGE_WIDTH = 47
+SHEETS_RANGE_WIDTH = 46
 PARENT_FOLDER_ID = '12ZTADl3NujM3fNhYTHG3C7cYNPPpFaN8'
 
 def show_existing_images(key_state, section_name):
@@ -55,6 +55,8 @@ class Headers_Map(Enum):
     POSSIBLE_GTG = 'À princípio, é possível configurar o GTG?'
     GTG_BLOCKS = 'Possíveis bloqueios para a implementação do GTG'
 
+    GENERAL_PLATFORMS = 'Quais ferramentas Google o cliente utiliza?'
+
     GTM_ANALYSIS = 'Análise do json do GTM'
     FORM_URLS = 'URLS onde apresentam potenciais locais de coleta de dados UPD'
     UPD_IMG_LINKS = 'UPD - Links de evidências'
@@ -65,13 +67,11 @@ class Headers_Map(Enum):
     GA_UPD_POSSIBLE_CONFIG = 'À princípio, é possível configurar o GA UPD?'
     GA_UPD_BLOCKS = 'Possíveis bloqueios para a configuração do GA UPD'
 
-    EC_PLATFORMS = 'Quais plataformas Google o cliente utiliza, que poderiam ter o EC implementado?'
     EC_HARDCODED = 'O EC foi implementado via hardcoded (se for o caso) corretamente?'
     EC_IMG_LINKS = 'EC - Links de evidências'
     EC_POSSIBLE_CONFIG = 'À princípio, é possível configurar o EC?'
     EC_BLOCKS = 'Possíveis bloqueios para a configuração do EC'
 
-    ECL_PLATFORMS = 'Quais plataformas Google o cliente utiliza, que poderiam ter o ECL implementado?'
     ECL_HARDCODED = 'O ECL foi implementado via hardcoded (se for o caso) corretamente?'
     ECL_IMG_LINKS = 'ECL - Links de evidências'
     ECL_POSSIBLE_CONFIG = 'À princípio, é possível configurar o ECl?'
@@ -95,6 +95,16 @@ class Headers_Map(Enum):
     GTG_ROADMAP = 'GTG Roadmap'
     UPD_ROADMAP = 'UPD Roadmap'
     OCI_ROADMAP = 'OCI Roadmap'
+
+    @property
+    def column_index(self):
+        return get_sheet_column_index(self)
+    
+    @property
+    def state_key(self):
+        if State_Keys_Map[self.name]:
+            return State_Keys_Map[self.name]
+        return None
 
 def get_sheet_column_index(Headers_Map):
     """Função específica para retornar o índice da coluna dado o nome do header, usando a constante RANGE_PLANILHA."""
@@ -121,6 +131,8 @@ class State_Keys_Map(Enum):
     POSSIBLE_GTG = 'form_possible_gtg'
     GTG_BLOCKS = 'form_gtg_blocks'
 
+    GENERAL_PLATFORMS = 'form_general_platforms'
+
     GTM_ANALYSIS = 'form_gtm_analysis'
     FORM_URLS = 'form_form_urls'
     UPD_IMG_LINKS = 'form_upd_image_links'
@@ -136,7 +148,6 @@ class State_Keys_Map(Enum):
     GA_UPD_POSSIBLE_CONFIG = 'form_ga_upd_possible_config'
     GA_UPD_BLOCKS = 'form_ga_upd_blocks'
 
-    EC_PLATFORMS = 'form_ec_platforms'
     EC_HARDCODED = 'form_ec_hardcoded'
     EC_IMG_LINKS = 'form_ec_image_links'
     EC_IMG_FORM = 'form_ec_image_form'
@@ -144,7 +155,6 @@ class State_Keys_Map(Enum):
     EC_POSSIBLE_CONFIG = 'form_ec_possible_config'
     EC_BLOCKS = 'form_ec_blocks'
 
-    ECL_PLATFORMS = 'form_ecl_platforms'
     ECL_HARDCODED = 'form_ecl_hardcoded'
     ECL_IMG_LINKS = 'form_ecl_image_links'
     ECL_IMG_FORM = 'form_ecl_image_form'
@@ -174,6 +184,10 @@ class State_Keys_Map(Enum):
     GTG_ROADMAP = 'form_gtg_roadmap'
     UPD_ROADMAP = 'form_upd_roadmap'
     OCI_ROADMAP = 'form_oci_roadmap'
+
+    @property
+    def st_state(self):
+        return st.session_state.get(self.value, None)
 
 def get_platform_from_key(key):
     dict = {

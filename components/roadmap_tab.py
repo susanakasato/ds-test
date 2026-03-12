@@ -17,7 +17,7 @@ def render_roadmap_tab():
 
     # BOTÃO COM INTELIGÊNCIA ARTIFICIAL
     if st.button("🪄 Gerar Roadmap", type="secondary"):
-        client = st.session_state.get(State_Keys_Map.CLIENT)
+        client = State_Keys_Map.CLIENT.st_state
         if not client or client == "✨ Cadastrar Novo Cliente...":
             st.error("Selecione um cliente válido no topo da página primeiro.")
         with st.spinner(f"🧠 A IA está analisando o diagnóstico de {client} e cruzando com as atividades mapeadas..."):
@@ -78,7 +78,7 @@ def render_roadmap_tab():
             #     "oci_ps": st.session_state.get("k_obs_oci"),
 
             # }
-            doc_id = st.session_state.get(State_Keys_Map.DIAGNOSIS_DOC_ID)
+            doc_id = State_Keys_Map.DIAGNOSIS_DOC_ID.st_state
             diagnosis_data = get_doc_content(docs_service, doc_id)
 
             # 2. Chamar a IA
@@ -86,15 +86,15 @@ def render_roadmap_tab():
 
             if roadmap_gerado:
                 # 3. Atualizar o Session State com a resposta da IA
-                st.session_state[State_Keys_Map.GTG_ROADMAP] = activity_to_text(roadmap_gerado.get("roadmap_gtg", []))
-                st.session_state[State_Keys_Map.UPD_ROADMAP] = activity_to_text(roadmap_gerado.get("roadmap_upd", []))
-                st.session_state[State_Keys_Map.OCI_ROADMAP] = activity_to_text(roadmap_gerado.get("roadmap_oci", []))
+                st.session_state[State_Keys_Map.GTG_ROADMAP.value] = activity_to_text(roadmap_gerado.get("roadmap_gtg", []))
+                st.session_state[State_Keys_Map.UPD_ROADMAP.value] = activity_to_text(roadmap_gerado.get("roadmap_upd", []))
+                st.session_state[State_Keys_Map.OCI_ROADMAP.value] = activity_to_text(roadmap_gerado.get("roadmap_oci", []))
                 st.success("✨ Roadmap gerado com sucesso!")
 
     # Caixas de texto editáveis (Lê do session_state populado pela IA)
-    roadmap_gtg = st.text_area("Plano de Ação - Google Tag Gateway", value=st.session_state.get(State_Keys_Map.GTG_ROADMAP, ''), height=250, key=State_Keys_Map.GTG_ROADMAP)
-    roadmap_upd = st.text_area("Plano de Ação - Envio de Sinais (UPD)", value=st.session_state.get(State_Keys_Map.UPD_ROADMAP, ''), height=250, key=State_Keys_Map.UPD_ROADMAP)
-    roadmap_oci = st.text_area("Plano de Ação - OCI Upgrade", value=st.session_state.get(State_Keys_Map.OCI_ROADMAP, ''), height=250, key=State_Keys_Map.OCI_ROADMAP)
+    roadmap_gtg = st.text_area("Plano de Ação - Google Tag Gateway", value=State_Keys_Map.GTG_ROADMAP.st_state, height=250, key=State_Keys_Map.GTG_ROADMAP.value)
+    roadmap_upd = st.text_area("Plano de Ação - Envio de Sinais (UPD)", value=State_Keys_Map.UPD_ROADMAP.st_state, height=250, key=State_Keys_Map.UPD_ROADMAP.value)
+    roadmap_oci = st.text_area("Plano de Ação - OCI Upgrade", value=State_Keys_Map.OCI_ROADMAP.st_state, height=250, key=State_Keys_Map.OCI_ROADMAP.value)
     roadmap_data = {
         "gtg": roadmap_gtg,
         "upd": roadmap_upd,
@@ -119,22 +119,22 @@ def render_roadmap_tab():
                         roadmap_doc_id, doc_url, pdf_url = create_roadmap_doc(
                             drive_service, client, client_folder_id, roadmap_data, roadmap_doc_id
                         )
-                        data[get_sheet_column_index(Headers_Map.ROADMAP_DOC_ID)] = roadmap_doc_id
-                        data[get_sheet_column_index(Headers_Map.GTG_ROADMAP)] = roadmap_gtg
-                        data[get_sheet_column_index(Headers_Map.UPD_ROADMAP)] = roadmap_upd
-                        data[get_sheet_column_index(Headers_Map.OCI_ROADMAP)] = roadmap_oci
+                        data[Headers_Map.ROADMAP_DOC_ID.column_index] = roadmap_doc_id
+                        data[Headers_Map.GTG_ROADMAP.column_index] = roadmap_gtg
+                        data[Headers_Map.UPD_ROADMAP.column_index] = roadmap_upd
+                        data[Headers_Map.OCI_ROADMAP.column_index] = roadmap_oci
 
                         save_to_sheets(sheets_service, SHEETS_ID, SHEETS_RANGE, client_sheets_row, data)
 
-                        st.session_state[State_Keys_Map.ROADMAP_DOC_URL] = doc_url
-                        st.session_state[State_Keys_Map.ROADMAP_PDF_URL] = pdf_url
+                        st.session_state[State_Keys_Map.ROADMAP_DOC_URL.value] = doc_url
+                        st.session_state[State_Keys_Map.ROADMAP_PDF_URL.value] = pdf_url
                         st.success("Documento de Roadmap gerado com sucesso!")
                 except Exception as e:
                     st.error(f"Erro ao gerar roadmap: {e}")
 
-    if st.session_state.get(State_Keys_Map.ROADMAP_DOC_URL) and st.session_state.get(State_Keys_Map.ROADMAP_PDF_URL):
+    if State_Keys_Map.ROADMAP_DOC_URL.st_state and State_Keys_Map.ROADMAP_PDF_URL.st_state:
         colA, colB = st.columns(2)
         with colA: 
-            st.link_button("➡️ Abrir Roadmap (Docs)", st.session_state[State_Keys_Map.ROADMAP_DOC_URL], use_container_width=True)
+            st.link_button("➡️ Abrir Roadmap (Docs)", State_Keys_Map.ROADMAP_DOC_URL.st_state, use_container_width=True)
         with colB: 
-            st.link_button("⬇️ Baixar Roadmap (PDF)", st.session_state[State_Keys_Map.ROADMAP_PDF_URL], use_container_width=True)
+            st.link_button("⬇️ Baixar Roadmap (PDF)", State_Keys_Map.ROADMAP_PDF_URL.st_state, use_container_width=True)
