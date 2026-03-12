@@ -11,8 +11,6 @@ def process_or_get_images(new_files_list, section_name, existing_links):
     final_urls = []
     raw_images_for_docx = []
 
-    old_links_quantity = len([l.strip() for l in existing_links.split('\n') if l.strip()]) if existing_links else 0
-    
     # 1. Se o usuário enviou imagens NOVAS no formulário:
     if new_files_list: 
         for idx, img_file in enumerate(new_files_list):
@@ -26,9 +24,8 @@ def process_or_get_images(new_files_list, section_name, existing_links):
             final_urls.append(link)
     
     # 2. Se NÃO há imagens novas, mas JÁ EXISTEM links antigos salvos no Sheets:
-    if old_links_quantity > 0:
-        links = [l.strip() for l in existing_links.split('\n') if l.strip()]
-        for idx, link in enumerate(links):
+    if len(existing_links) if existing_links else 0 > 0:
+        for idx, link in enumerate(existing_links):
             try:
                 # Extrai o File ID do link do Google Drive (ex: https://drive.google.com/file/d/ID_AQUI/view)
                 if '/d/' in link:
@@ -41,7 +38,7 @@ def process_or_get_images(new_files_list, section_name, existing_links):
                 print(f"Erro ao baixar imagem antiga {link}: {e}")
                 
         # Mantém os links antigos intactos para não apagar do Sheets
-    return '\n'.join(final_urls), raw_images_for_docx
+    return final_urls, raw_images_for_docx
 
 def render_diagnosis_tab():
     # Criação das Abas
@@ -55,8 +52,6 @@ def render_diagnosis_tab():
         render_upd_tab()
     with oci_tab:
         render_oci_tab()
-
-    print("renderizando botão de salvar..." + State_Keys_Map.CLIENT.st_state)
 
     st.divider()
     if st.button("💾 Salvar e Gerar Documento de Diagnóstico", type="primary", use_container_width=True):
@@ -90,7 +85,6 @@ def render_diagnosis_tab():
                     st.session_state[State_Keys_Map.OCI_IMG_RAW.value] = raw_oci
                     st.session_state[State_Keys_Map.UPD_IMG_RAW.value] = raw_upd
 
-
                     data_for_docx = {}
                     for key in State_Keys_Map:
                         data_for_docx[key] = key.st_state
@@ -102,7 +96,6 @@ def render_diagnosis_tab():
                     )
                     st.session_state[State_Keys_Map.DIAGNOSIS_DOC_URL.value] = doc_url
                     st.session_state[State_Keys_Map.DIAGNOSIS_PDF_URL.value] = pdf_url
-
                     sheets_data = [None] * SHEETS_RANGE_WIDTH
                     for key in Headers_Map:
                         sheets_data[get_sheet_column_index(key)] = key.state_key.st_state_formatted
@@ -116,11 +109,11 @@ def render_diagnosis_tab():
                     st.success(f"Diagnóstico para {State_Keys_Map.CLIENT.st_state} salvo com sucesso!")
 
                     update_client_list()
-                    
-
                         
                 except Exception as e:
                     st.error(f"Erro ao processar integração com Google: {e}")
+                    print(f"Erro ao processar integração com Google: {e}")
+
     if State_Keys_Map.DIAGNOSIS_DOC_URL.st_state and State_Keys_Map.DIAGNOSIS_PDF_URL.st_state:
         col1, col2 = st.columns(2)
         with col1:

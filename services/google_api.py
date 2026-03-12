@@ -116,6 +116,7 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, client):
     return -1, None, None, None, None
 
 def save_to_sheets(sheets_service, spreadsheet_id, range_name, existing_row, row_data):
+    print(row_data)
     """Salva os dados (Atualiza se a linha existir, ou adiciona uma nova)."""
     sheet = sheets_service.spreadsheets()
     body = {'values': [row_data]}
@@ -399,6 +400,13 @@ def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_i
         for url in diagnosis_data.get(State_Keys_Map.FORM_URLS):
             doc.add_paragraph(url, style='List Bullet')
 
+    if len(diagnosis_data.get(State_Keys_Map.UPD_IMG_RAW)) > 0:
+        add_images("Sinais UPD", diagnosis_data.get(State_Keys_Map.UPD_IMG_RAW))
+
+    if diagnosis_data.get(State_Keys_Map.UPD_PS):
+        doc.add_heading("Observações - Envio de Sinais UPD", level=3)
+        doc.add_paragraph(diagnosis_data.get(State_Keys_Map.UPD_PS))
+
     # Função auxiliar para adicionar subseções de cada plataforma (GA, EC, ECL) mantendo a mesma estrutura e formatação
     def add_subsection(platform, status_plataforma):
         if status_plataforma:
@@ -407,97 +415,100 @@ def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_i
             doc.add_paragraph(f"Status da configuração na interface da plataforma {platform} não informado.", style='List Bullet')
 
     # --- SUBSEÇÃO GA UPD ---
-    doc.add_heading("Google Analytics UPD", level=4)
-    if diagnosis_data.get(State_Keys_Map.GA_HARDCODED):
-        doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Google Analytics.", style='List Bullet')
-    add_images("Envio de Sinais - Google Analytics", diagnosis_data.get(State_Keys_Map.GA_IMG_RAW))
-    if diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Não' and diagnosis_data.get(State_Keys_Map.GA_HARDCODED) == 'Não':
-        doc.add_heading("Considerações finais sobre o GA UPD", level=5)
-        if diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Sim":
-            doc.add_paragraph(f"Foi possível concluir que será possível configurar o GA UPD no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
-                doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
-        elif diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Não":
-            doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o GA UPD no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
-                doc.add_paragraph("Os bloqueios identificados para a configuração do GA UPD foram:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
-        else:
-            if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
+    if 'Google Analytics' in diagnosis_data.get(State_Keys_Map.GENERAL_PLATFORMS):
+        doc.add_heading("Google Analytics UPD", level=4)
+        if diagnosis_data.get(State_Keys_Map.GA_HARDCODED):
+            doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Google Analytics.", style='List Bullet')
+        if len(diagnosis_data.get(State_Keys_Map.GA_IMG_RAW)) > 0:
+            add_images("Envio de Sinais - Google Analytics", diagnosis_data.get(State_Keys_Map.GA_IMG_RAW))
+        if diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Não' and diagnosis_data.get(State_Keys_Map.GA_HARDCODED) == 'Não':
+            doc.add_heading("Considerações finais sobre o GA UPD", level=5)
+            if diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Sim":
+                doc.add_paragraph(f"Foi possível concluir que será possível configurar o GA UPD no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
+                    doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
+            elif diagnosis_data.get(State_Keys_Map.GA_UPD_POSSIBLE_CONFIG) == "Não":
+                doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o GA UPD no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
+                    doc.add_paragraph("Os bloqueios identificados para a configuração do GA UPD foram:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
             else:
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente.")
-    elif diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Sim':
-        doc.add_paragraph('A configuração na interface do GA foi executada corretamente.', style="List Bullet")
+                if diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS):
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.GA_UPD_BLOCKS))
+                else:
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o GA UPD no ambiente do cliente.")
+        elif diagnosis_data.get(State_Keys_Map.GA_UPD_CONFIG) == 'Sim':
+            doc.add_paragraph('A configuração na interface do GA foi executada corretamente.', style="List Bullet")
 
-    
     # --- SUBSEÇÃO EC ---
-    doc.add_heading("Enhanced Conversions", level=4)
-    if diagnosis_data.get(State_Keys_Map.EC_HARDCODED):
-        doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions.", style='List Bullet')
-    if len(diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, [])) > 0:
-        for ec_platform in diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, []):
-            platform = ec_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
-            platform_status = "Sim" if "Sim" in ec_platform else "Não" if "Não" in ec_platform else None
-            add_subsection(platform, platform_status)
-    else:
-        doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions.", style='List Bullet')
-    add_images("Envio de Sinais - Enhanced Conversions", diagnosis_data.get(State_Keys_Map.EC_IMG_RAW))
-    if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.EC_PLATFORMS, [])) and diagnosis_data.get(State_Keys_Map.EC_HARDCODED) == 'Não':
-        doc.add_heading("Considerações finais sobre o EC", level=5)
-        if diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Sim":
-            doc.add_paragraph(f"Foi possível concluir que será possível configurar o EC no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
-                doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
-        elif diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Não":
-            doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o EC no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
-                doc.add_paragraph("Os bloqueios identificados para a configuração do EC foram:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
+    if diagnosis_data.get(State_Keys_Map.EC_PLATFORM_CONFIG) != "":
+        doc.add_heading("Enhanced Conversions", level=4)
+        if diagnosis_data.get(State_Keys_Map.EC_HARDCODED):
+            doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions.", style='List Bullet')
+        if len(diagnosis_data.get(State_Keys_Map.EC_PLATFORM_CONFIG, [])) > 0:
+            for ec_platform in diagnosis_data.get(State_Keys_Map.EC_PLATFORM_CONFIG, []):
+                platform = ec_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
+                platform_status = "Sim" if "Sim" in ec_platform else "Não" if "Não" in ec_platform else None
+                add_subsection(platform, platform_status)
         else:
-            if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
+            doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions.", style='List Bullet')
+        if len(diagnosis_data.get(State_Keys_Map.EC_IMG_RAW)) > 0:
+            add_images("Envio de Sinais - Enhanced Conversions", diagnosis_data.get(State_Keys_Map.EC_IMG_RAW))
+        if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.EC_PLATFORM_CONFIG, [])) and diagnosis_data.get(State_Keys_Map.EC_HARDCODED) == 'Não':
+            doc.add_heading("Considerações finais sobre o EC", level=5)
+            if diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Sim":
+                doc.add_paragraph(f"Foi possível concluir que será possível configurar o EC no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
+                    doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
+            elif diagnosis_data.get(State_Keys_Map.EC_POSSIBLE_CONFIG) == "Não":
+                doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o EC no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
+                    doc.add_paragraph("Os bloqueios identificados para a configuração do EC foram:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
             else:
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.EC_BLOCKS):
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.EC_BLOCKS))
+                else:
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o EC no ambiente do cliente.")
 
     # --- SUBSEÇÃO ECL ---
-    doc.add_heading("Enhanced Conversions for Leads", level=4)
-    if diagnosis_data.get(State_Keys_Map.ECL_HARDCODED):
-        doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions for Leads.", style='List Bullet')
-    if len(diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, [])) > 0:
-        for ecl_platform in diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, []):
-            platform = ecl_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
-            platform_status = "Sim" if "Sim" in ecl_platform else "Não" if "Não" in ecl_platform else None
-            add_subsection(platform, platform_status)
-    else:
-        doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions for Leads.", style='List Bullet')
-    add_images("Envio de Sinais - Enhanced Conversions for Leads", diagnosis_data.get(State_Keys_Map.ECL_IMG_RAW))
-    if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.ECL_PLATFORMS, [])) and diagnosis_data.get(State_Keys_Map.ECL_HARDCODED) == 'Não':
-        doc.add_heading("Considerações finais sobre o ECL", level=5)
-        if diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Sim":
-            doc.add_paragraph(f"Foi possível concluir que será possível configurar o ECL no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
-                doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
-        elif diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Não":
-            doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o ECL no ambiente do cliente.")
-            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
-                doc.add_paragraph("Os bloqueios identificados para a configuração do ECL foram:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
+    if diagnosis_data.get(State_Keys_Map.ECL_PLATFORM_CONFIG) != "":
+        doc.add_heading("Enhanced Conversions for Leads", level=4)
+        if diagnosis_data.get(State_Keys_Map.ECL_HARDCODED):
+            doc.add_paragraph("Foram identificados dados UPD hardcoded no código do site, o que pode indicar uma implementação manual de UPD para Enhanced Conversions for Leads.", style='List Bullet')
+        if len(diagnosis_data.get(State_Keys_Map.ECL_PLATFORM_CONFIG, [])) > 0:
+            for ecl_platform in diagnosis_data.get(State_Keys_Map.ECL_PLATFORM_CONFIG, []):
+                platform = ecl_platform.split(" (")[0]  # Extrai o nome da plataforma, removendo o status entre parênteses
+                platform_status = "Sim" if "Sim" in ecl_platform else "Não" if "Não" in ecl_platform else None
+                add_subsection(platform, platform_status)
         else:
-            if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
-                doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
+            doc.add_paragraph("O cliente não informou se possui alguma plataforma Google de marketing integrada que possa se beneficiar com o Enhanced Conversions for Leads.", style='List Bullet')
+        if len(diagnosis_data.get(State_Keys_Map.ECL_IMG_RAW)) > 0:
+            add_images("Envio de Sinais - Enhanced Conversions for Leads", diagnosis_data.get(State_Keys_Map.ECL_IMG_RAW))
+        if "Não" in ", ".join(diagnosis_data.get(State_Keys_Map.ECL_PLATFORM_CONFIG, [])) and diagnosis_data.get(State_Keys_Map.ECL_HARDCODED) == 'Não':
+            doc.add_heading("Considerações finais sobre o ECL", level=5)
+            if diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Sim":
+                doc.add_paragraph(f"Foi possível concluir que será possível configurar o ECL no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
+                    doc.add_paragraph("Porém, foram identificados os seguintes possíveis bloqueios para a configuração:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
+            elif diagnosis_data.get(State_Keys_Map.ECL_POSSIBLE_CONFIG) == "Não":
+                doc.add_paragraph(f"Foi possível concluir que, à princípio, não será possível configurar o ECL no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
+                    doc.add_paragraph("Os bloqueios identificados para a configuração do ECL foram:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
             else:
-                doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente.")
+                if diagnosis_data.get(State_Keys_Map.ECL_BLOCKS):
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente, pelos seguintes motivos a serem avaliados:")
+                    doc.add_paragraph(diagnosis_data.get(State_Keys_Map.ECL_BLOCKS))
+                else:
+                    doc.add_paragraph(f"Não foi possível concluir se será possível configurar o ECL no ambiente do cliente.")
 
-    if diagnosis_data.get(State_Keys_Map.UPD_PS):
-        doc.add_heading("Observações - Envio de Sinais UPD", level=3)
-        doc.add_paragraph(diagnosis_data.get(State_Keys_Map.UPD_PS))
+
 
     # --- SEÇÃO OFFLINE CONVERSIONS INTEGRATION (OCI) ---
     doc.add_heading("Offline Conversions Integration (OCI)", level=2)
@@ -514,7 +525,8 @@ def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_i
             doc.add_paragraph(f"As seguintes informações estão sendo integradas atualmente:", style='List Bullet')
             for dado in dados:
                 doc.add_paragraph(dado, style='List Bullet 2')
-    add_images("Offline Conversions Integration (OCI)", diagnosis_data.get(State_Keys_Map.OCI_IMG_RAW))
+    if len(diagnosis_data.get(State_Keys_Map.OCI_IMG_RAW)) > 0:
+        add_images("Offline Conversions Integration (OCI)", diagnosis_data.get(State_Keys_Map.OCI_IMG_RAW))
     if diagnosis_data.get(State_Keys_Map.OCI_PS):
         doc.add_heading("Observações - Offline Conversion Integration (OCI)", level=3)
         doc.add_paragraph(diagnosis_data.get(State_Keys_Map.OCI_PS))

@@ -157,7 +157,7 @@ class State_Keys_Map(Enum):
     GA_UPD_POSSIBLE_CONFIG = 'form_ga_upd_possible_config'
     GA_UPD_BLOCKS = 'form_ga_upd_blocks'
 
-    EC_PLATFORM_CONFIG = 'form_ec_platform_config'
+    EC_PLATFORM_CONFIG = 'form_ec_platform_config_list'
     EC_HARDCODED = 'form_ec_hardcoded'
     EC_IMG_LINKS = 'form_ec_image_links_list'
     EC_IMG_FORM = 'form_ec_image_form'
@@ -165,7 +165,7 @@ class State_Keys_Map(Enum):
     EC_POSSIBLE_CONFIG = 'form_ec_possible_config'
     EC_BLOCKS = 'form_ec_blocks'
 
-    ECL_PLATFORM_CONFIG = 'form_ecl_platform_config'
+    ECL_PLATFORM_CONFIG = 'form_ecl_platform_config_list'
     ECL_HARDCODED = 'form_ecl_hardcoded'
     ECL_IMG_LINKS = 'form_ecl_image_links_list'
     ECL_IMG_FORM = 'form_ecl_image_form'
@@ -236,8 +236,11 @@ def get_key_from_platform(platform):
 def sheet_to_state(row, state_key_enum):
     if state_key_enum.header is None:
         return None
-    if 'list' in state_key_enum.value:
-        data = row[state_key_enum.header.column_index].split("\n")
+    if 'list' in state_key_enum.value and row[state_key_enum.header.column_index] is not None:
+        if row[state_key_enum.header.column_index] == "":
+            data = [] 
+        else:
+            data = row[state_key_enum.header.column_index].split("\n")
     else:
         data = row[state_key_enum.header.column_index]
     return data

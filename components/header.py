@@ -34,37 +34,9 @@ def carregar_dados_cliente():
             if row:
                 while len(row) < SHEETS_RANGE_WIDTH:
                     row.append("")
-                # --- GOOGLE TAG GATEWAY ---
                 for key in State_Keys_Map:
                     st.session_state[key.value] = sheet_to_state(row, key)
-                # st.session_state[State_Keys_Map.GTG_IMPLEMENTED.value] = row[Headers_Map.GTG_IMPLEMENTED.column_index]
-                # st.session_state[State_Keys_Map.CDN.value] = row[Headers_Map.CDN.column_index]
-                # st.session_state[State_Keys_Map.USE_IAC.value] = row[Headers_Map.USE_IAC.column_index]
-                # st.session_state[State_Keys_Map.USE_TMS.value] = row[Headers_Map.USE_TMS.column_index]
-                # st.session_state[State_Keys_Map.TMS_TYPE.value] = row[Headers_Map.TMS_TYPE.column_index]
-                # st.session_state[State_Keys_Map.USE_GTM_CS.value] = row[Headers_Map.USE_GTM_CS.column_index]
-                # st.session_state[State_Keys_Map.GTM_CS_IDS.value] = row[Headers_Map.GTM_CS_IDS.column_index]
-                # st.session_state[State_Keys_Map.USE_GTM_SS.value] = row[Headers_Map.USE_GTM_SS.column_index]
-                # st.session_state[State_Keys_Map.GTM_SS_SERVER.value] = row[Headers_Map.GTM_SS_SERVER.column_index]
-                # st.session_state[State_Keys_Map.AUTH_NEW_DOMAIN_PATH.value] = row[Headers_Map.AUTH_NEW_DOMAIN_PATH.column_index]
-                # st.session_state[State_Keys_Map.POSSIBLE_GTG.value] = row[Headers_Map.POSSIBLE_GTG.column_index]
-                # st.session_state[State_Keys_Map.GTG_BLOCKS.value] = row[Headers_Map.GTG_BLOCKS.column_index]
-                # st.session_state[State_Keys_Map.GTG_PS.value] = row[Headers_Map.GTG_PS.column_index]
 
-                # # --- UPD ---
-                # st.session_state[State_Keys_Map.GTM_ANALYSIS.value] = row[Headers_Map.GTM_ANALYSIS.column_index]
-                # st.session_state[State_Keys_Map.FORM_URLS.value] = row[Headers_Map.FORM_URLS.column_index]
-                # st.session_state[State_Keys_Map.UPD_IMG_LINKS.value] = row[Headers_Map.UPD_IMG_LINKS.column_index]
-                # st.session_state[State_Keys_Map.UPD_PS.value] = row[Headers_Map.UPD_PS.column_index]
-
-                # # --- GA --- 
-                # st.session_state[State_Keys_Map.GA_UPD_CONFIG.value] = row[Headers_Map.GA_UPD_CONFIG.column_index]
-                # st.session_state[State_Keys_Map.GA_HARDCODED.value] = row[Headers_Map.GA_HARDCODED.column_index]
-                # st.session_state[State_Keys_Map.GA_IMG_LINKS.value] = row[Headers_Map.GA_IMG_LINKS.column_index]
-                # st.session_state[State_Keys_Map.GA_UPD_POSSIBLE_CONFIG.value] = row[Headers_Map.GA_UPD_POSSIBLE_CONFIG.column_index]
-                # st.session_state[State_Keys_Map.GA_UPD_BLOCKS.value] = row[Headers_Map.GA_UPD_BLOCKS.column_index]
-
-                # --- EC ---
                 ec_platforms_formatted = row[Headers_Map.EC_PLATFORM_CONFIG.column_index].split("\n")
                 ec_platforms = []
                 for plat in ec_platforms_formatted:
@@ -74,10 +46,6 @@ def carregar_dados_cliente():
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
                         st.session_state[f'form_ec_platform_{platform}'] = status
-                # st.session_state[State_Keys_Map.EC_HARDCODED.value] = row[Headers_Map.EC_HARDCODED.column_index]
-                # st.session_state[State_Keys_Map.EC_IMG_LINKS.value] = row[Headers_Map.EC_IMG_LINKS.column_index]
-                # st.session_state[State_Keys_Map.EC_POSSIBLE_CONFIG.value] = row[Headers_Map.EC_POSSIBLE_CONFIG.column_index]
-                # st.session_state[State_Keys_Map.EC_BLOCKS.value] = row[Headers_Map.EC_BLOCKS.column_index]
 
                 # --- ECL ---
                 ecl_platforms_formatted = row[Headers_Map.ECL_PLATFORM_CONFIG.column_index].split("\n")
@@ -89,34 +57,10 @@ def carregar_dados_cliente():
                     status = "Sim" if "Sim" in plat else "Não" if "Não" in plat else None
                     if status:
                         st.session_state[f'form_ecl_platform_{plat_key}'] = status
-                # st.session_state[State_Keys_Map.ECL_HARDCODED.value] = row[Headers_Map.ECL_HARDCODED.column_index]
-                # st.session_state[State_Keys_Map.ECL_IMG_LINKS.value] = row[Headers_Map.ECL_IMG_LINKS.column_index]
-                # st.session_state[State_Keys_Map.ECL_POSSIBLE_CONFIG.value] = row[Headers_Map.ECL_POSSIBLE_CONFIG.column_index]
-                # st.session_state[State_Keys_Map.ECL_BLOCKS.value] = row[Headers_Map.ECL_BLOCKS.column_index]
-
-
-                # # --- OCI ---
-                # st.session_state[State_Keys_Map.OCI_IMPLEMENTED.value] = row[Headers_Map.OCI_IMPLEMENTED.column_index]
-                # st.session_state[State_Keys_Map.OCI_PLATFORM.value] = row[Headers_Map.OCI_PLATFORM.column_index]
-                # st.session_state[State_Keys_Map.OCI_METHOD.value] = row[Headers_Map.OCI_METHOD.column_index]
-                # oci_infos = row[Headers_Map.OCI_INFOS.column_index]
-                # if oci_infos:
-                #     st.session_state[State_Keys_Map.OCI_INFOS.value] = oci_infos.split('\n') if State_Keys_Map.OCI_INFOS.st_state else []
-                # st.session_state[State_Keys_Map.OCI_IMG_LINKS.value] = row[Headers_Map.OCI_IMG_LINKS.column_index]
-                # st.session_state[State_Keys_Map.OCI_POSSIBLE_CONFIG.value] = row[Headers_Map.OCI_POSSIBLE_CONFIG.column_index]
-                # st.session_state[State_Keys_Map.OCI_BLOCKS.value] = row[Headers_Map.OCI_BLOCKS.column_index]
-                # st.session_state[State_Keys_Map.OCI_PS.value] = row[Headers_Map.OCI_PS.column_index]
-
-                # --- DOCS ---
+                        
                 diagnosis_doc_id = row[Headers_Map.DIAGNOSIS_DOC_ID.column_index]
-                # st.session_state[State_Keys_Map.DIAGNOSIS_DOC_ID.value] = diagnosis_doc_id
                 st.session_state[State_Keys_Map.DIAGNOSIS_DOC_URL.value] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/edit"
                 st.session_state[State_Keys_Map.DIAGNOSIS_PDF_URL.value] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/export?format=pdf"
-
-                # --- ROADMAP ---
-                # st.session_state[State_Keys_Map.GTG_ROADMAP.value] = row[Headers_Map.GTG_ROADMAP.column_index]
-                # st.session_state[State_Keys_Map.UPD_ROADMAP.value] = row[Headers_Map.UPD_ROADMAP.column_index]
-                # st.session_state[State_Keys_Map.OCI_ROADMAP.value] = row[Headers_Map.OCI_ROADMAP.column_index]
 
                 roadmap_doc_id = row[Headers_Map.ROADMAP_DOC_ID.column_index]
                 # st.session_state[State_Keys_Map.ROADMAP_DOC_ID.value] = roadmap_doc_id
@@ -160,5 +104,6 @@ def render_header():
     if selected_client == NEW_CLIENT_PLACEHOLDER:
         st.text_input("Digite o nome do novo cliente *", key=State_Keys_Map.CLIENT.value)
         return
+    st.session_state[State_Keys_Map.CLIENT.value] = selected_client
 
     
