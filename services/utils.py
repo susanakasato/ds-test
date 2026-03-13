@@ -19,6 +19,7 @@ def show_existing_images(key_state_value, section_name):
                 st.markdown("Se você fizer upload de novos arquivos, eles serão **adicionados** a esta lista.")
                 for i, link in enumerate(lista_links):
                     st.markdown(f"🖼️ [Visualizar Imagem {i+1} no Drive]({link})")
+    return len(links)
 
 def update_client_list():   
     st.session_state['client_list'] = [] # Inicia vazio
@@ -53,7 +54,7 @@ class Headers_Map(Enum):
     GTM_SS_SERVER = 'Qual servidor o GTM Server-Side está hospedado?'
     AUTH_NEW_DOMAIN_PATH = 'O cliente autorizou a criação de novos caminhos no domínio principal?'
     GTG_PS = 'GTG - Observações'
-    POSSIBLE_GTG = 'À princípio, é possível configurar o GTG?'
+    GTG_POSSIBLE_CONFIG = 'À princípio, é possível configurar o GTG?'
     GTG_BLOCKS = 'Possíveis bloqueios para a implementação do GTG'
 
     GENERAL_PLATFORMS = 'Quais ferramentas Google o cliente utiliza?'
@@ -134,7 +135,7 @@ class State_Keys_Map(Enum):
     GTM_SS_SERVER = 'form_gtm_ss_server'
     AUTH_NEW_DOMAIN_PATH = 'form_auth_new_domain_path'
     GTG_PS = 'form_gtg_ps'
-    POSSIBLE_GTG = 'form_possible_gtg'
+    GTG_POSSIBLE_CONFIG = 'form_possible_gtg'
     GTG_BLOCKS = 'form_gtg_blocks'
 
     GENERAL_PLATFORMS = 'form_general_platforms_list'
@@ -144,7 +145,7 @@ class State_Keys_Map(Enum):
 
     GTM_ANALYSIS = 'form_gtm_analysis'
     FORM_URLS = 'form_form_urls'
-    UPD_IMG_LINKS = 'form_upd_image_links_list'
+    UPD_IMG_LINKS = 'form_upd_image_links'
     UPD_IMG_FORM = 'form_upd_image_form'
     UPD_IMG_RAW = 'form_upd_image_raw'
     UPD_PS = 'form_upd_ps'
@@ -244,3 +245,9 @@ def sheet_to_state(row, state_key_enum):
     else:
         data = row[state_key_enum.header.column_index]
     return data
+
+def get_doc_url(doc_id):
+    return f"https://docs.google.com/document/d/{doc_id}/edit"
+
+def get_pdf_url(doc_id):
+    return f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"

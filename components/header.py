@@ -1,7 +1,7 @@
 import streamlit as st # pyright: ignore[reportMissingImports]
 import time
 from services.google_api import check_client_in_sheets, get_services
-from services.utils import SHEETS_ID, SHEETS_RANGE, SHEETS_RANGE_WIDTH, Headers_Map, get_sheet_column_index, get_platform_from_key, State_Keys_Map, sheet_to_state
+from services.utils import SHEETS_ID, SHEETS_RANGE, SHEETS_RANGE_WIDTH, Headers_Map, get_doc_url, get_pdf_url, get_sheet_column_index, get_platform_from_key, State_Keys_Map, sheet_to_state
 
 NEW_CLIENT_PLACEHOLDER = "✨ Cadastrar Novo Cliente..."
 
@@ -59,13 +59,12 @@ def carregar_dados_cliente():
                         st.session_state[f'form_ecl_platform_{plat_key}'] = status
                         
                 diagnosis_doc_id = row[Headers_Map.DIAGNOSIS_DOC_ID.column_index]
-                st.session_state[State_Keys_Map.DIAGNOSIS_DOC_URL.value] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/edit"
-                st.session_state[State_Keys_Map.DIAGNOSIS_PDF_URL.value] = f"https://docs.google.com/document/d/{diagnosis_doc_id}/export?format=pdf"
+                st.session_state[State_Keys_Map.DIAGNOSIS_DOC_URL.value] = get_doc_url(diagnosis_doc_id)
+                st.session_state[State_Keys_Map.DIAGNOSIS_PDF_URL.value] = get_pdf_url(diagnosis_doc_id)
 
                 roadmap_doc_id = row[Headers_Map.ROADMAP_DOC_ID.column_index]
-                # st.session_state[State_Keys_Map.ROADMAP_DOC_ID.value] = roadmap_doc_id
-                st.session_state[State_Keys_Map.ROADMAP_DOC_URL.value] = f"https://docs.google.com/document/d/{roadmap_doc_id}/edit"
-                st.session_state[State_Keys_Map.ROADMAP_PDF_URL.value] = f"https://docs.google.com/document/d/{roadmap_doc_id}/export?format=pdf"
+                st.session_state[State_Keys_Map.ROADMAP_DOC_URL.value] = get_doc_url(roadmap_doc_id)
+                st.session_state[State_Keys_Map.ROADMAP_PDF_URL.value] = get_pdf_url(roadmap_doc_id)
 
                 st.session_state['form_load_status'] = True
             else:
@@ -73,7 +72,6 @@ def carregar_dados_cliente():
         except Exception as e:
             st.session_state['form_load_status'] = False
             print(f"Erro ao carregar dados do cliente: {e}")
-            
     if st.session_state['form_load_status'] == None:
         temp_msg.warning("Cliente não encontrado. Por favor, preencha o formulário para cadastrar um novo cliente ou selecione outro cliente existente.")
     elif st.session_state['form_load_status'] == True:

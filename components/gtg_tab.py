@@ -19,7 +19,7 @@ def render_gtg_tab():
             if State_Keys_Map.USE_GTM_SS.st_state == "Sim":
                 st.text_input("Qual servidor utilizado para hospedar o GTM Server Side?", key=State_Keys_Map.GTM_SS_SERVER.value)
     st.radio("O cliente autorizou novos caminhos para o domínio principal?", ("Sim", "Não"), index=None, key=State_Keys_Map.AUTH_NEW_DOMAIN_PATH.value)
-    if State_Keys_Map.GTG_IMPLEMENTED.st_state == "Não":
-        st.radio("À princípio, é possível configurar o GTG?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.POSSIBLE_GTG.value)
+    if State_Keys_Map.GTG_IMPLEMENTED.st_state != "Sim":
+        st.radio("À princípio, é possível configurar o GTG?", ("Sim", "Não", "Talvez"), index=None, key=State_Keys_Map.GTG_POSSIBLE_CONFIG.value)
         st.text_area("Quais os possíveis bloqueios para a implementação do GTG?", key=State_Keys_Map.GTG_BLOCKS.value)
     st.text_area("Observações (GTG)", key=State_Keys_Map.GTG_PS.value)

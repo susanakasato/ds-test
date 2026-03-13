@@ -14,7 +14,7 @@ from docx.oxml.ns import qn # pyright: ignore[reportMissingImports]
 from docx.oxml.shared import qn # pyright: ignore[reportMissingImports]
 from docx.enum.text import WD_ALIGN_PARAGRAPH # pyright: ignore[reportMissingImports]
 from googleapiclient.http import MediaIoBaseDownload # pyright: ignore[reportMissingImports]
-from services.utils import get_sheet_column_index, Headers_Map, State_Keys_Map, SHEETS_RANGE_WIDTH
+from services.utils import Headers_Map, State_Keys_Map, SHEETS_RANGE_WIDTH
 
 # Escopos de acesso necessários (Sheets, Docs e Drive)
 SCOPES = [
@@ -64,16 +64,22 @@ def get_services():
     drive_service = build('drive', 'v3', credentials=creds)
     return sheets_service, docs_service, drive_service
 
-def create_drive_folder(drive_service, folder_name, parent_folder_id):
+def create_drive_folder(drive_service, client, parent_folder_id):
     """Cria uma nova pasta dentro de uma pasta específica no Google Drive."""
     file_metadata = {
-        'name': folder_name,
+        'name': client,
         'mimeType': 'application/vnd.google-apps.folder',
         'parents': [parent_folder_id]
     }
-    file = drive_service.files().create(body=file_metadata, fields='id').execute()
-    return file.get('id')
+    folder = drive_service.files().create(body=file_metadata, fields='id').execute()
 
+    file_metadata = {
+            'name': f'[DS30] Diagnóstico Técnico - {client}',
+            'parents': [folder.get('id')],
+            'mimeType': 'application/vnd.google-apps.document'
+        }
+    doc = drive_service.files().create(body=file_metadata, fields='id').execute()
+    return folder.get('id'), doc.get('id')
 
 def upload_image_to_drive(drive_service, file_stream, filename, folder_id=None):
     """Faz o upload de uma imagem para o Drive e a torna publicamente acessível para leitura."""
@@ -116,7 +122,6 @@ def check_client_in_sheets(sheets_service, spreadsheet_id, range_name, client):
     return -1, None, None, None, None
 
 def save_to_sheets(sheets_service, spreadsheet_id, range_name, existing_row, row_data):
-    print(row_data)
     """Salva os dados (Atualiza se a linha existir, ou adiciona uma nova)."""
     sheet = sheets_service.spreadsheets()
     body = {'values': [row_data]}
@@ -269,7 +274,7 @@ def add_doc_template(doc):
     except Exception as e:
         print(f"Aviso: Não foi possível adicionar as imagens do rodapé: {e}")
 
-def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_id, doc_id):
+def create_update_diagnostic_doc(drive_service, client, diagnosis_data, doc_id):
     """Cria/Atualiza o Google Docs estruturado usando python-docx, embutindo imagens nativamente."""
 
     def add_images(section, raw_images):      
@@ -569,24 +574,9 @@ def create_update_diagnostic_doc(drive_service, client, diagnosis_data, folder_i
             media_body=media
         ).execute()
     else:
-        # Cria um ficheiro novo na pasta
-        file_metadata = {
-            'name': f'[DS30] Diagnóstico Técnico - {client}',
-            'parents': [folder_id],
-            'mimeType': 'application/vnd.google-apps.document'
-        }
-        file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id'
-        ).execute()
-        doc_id = file.get('id')
-
-    # 4. Retorna os links formatados
-    doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
-    pdf_url = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
+        print('ID do documento inválido.')
     
-    return doc_id, doc_url, pdf_url
+    return doc_id
 
 def create_roadmap_doc(drive_service, client, folder_id, roadmap_data, doc_id):
     """Cria um documento Word isolado apenas com o Roadmap editado e envia para o Drive."""

@@ -148,6 +148,7 @@ def render_upd_tab():
                 st.error(f"Erro ao ler ou analisar o arquivo JSON: {e}")
     st.text_area("Liste as URLs onde há a presença de formulários possíveis de coleta de dados UPD:", key=State_Keys_Map.FORM_URLS.value)
     st.session_state[State_Keys_Map.UPD_IMG_FORM.value] = st.file_uploader("Upload de imagens de evidências de sinais UPD", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    # if State_Keys_Map.UPD_IMG_LINKS.st_state and st.session_state.get('form_existing_upd_imgs') and len(State_Keys_Map.UPD_IMG_LINKS.st_state) != len(st.session_state.get('form_existing_upd_imgs')):
     show_existing_images(State_Keys_Map.UPD_IMG_LINKS.value, "UPD")
     st.text_area("Observações (Envio de Sinais UPD)", key=State_Keys_Map.UPD_PS.value)
     st.divider()
@@ -167,7 +168,7 @@ def render_upd_tab():
 
     # --- Subseção: Enhanced Conversions ---
     st.subheader("🎯 Enhanced Conversions")
-    ec_platforms = State_Keys_Map.GENERAL_PLATFORMS.st_state if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
+    ec_platforms = [plat for plat in State_Keys_Map.GENERAL_PLATFORMS.st_state if plat] if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
     if 'Google Analytics' in ec_platforms:
         ec_platforms.remove('Google Analytics')
     formatted_ec_platforms = []
@@ -193,7 +194,7 @@ def render_upd_tab():
 
     # --- Subseção: Enhanced Conversions for Leads ---
     st.subheader("🧲 Enhanced Conversions for Leads")
-    ecl_platforms = State_Keys_Map.GENERAL_PLATFORMS.st_state if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
+    ecl_platforms = [plat for plat in State_Keys_Map.GENERAL_PLATFORMS.st_state if plat] if State_Keys_Map.GENERAL_PLATFORMS.st_state else []
     if 'Google Analytics' in ecl_platforms:
         ecl_platforms.remove('Google Analytics')
     formatted_ecl_platforms = []
